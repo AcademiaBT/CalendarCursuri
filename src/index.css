@@ -346,6 +346,7 @@ input:focus, select:focus, textarea:focus {
   cursor: pointer;
   border-left: 1px solid var(--border);
   border-bottom: 2px solid var(--border);
+  position: relative;
 }
 .week-day-header:first-child { border-left: none; }
 .week-day-header:hover { background: var(--accent-soft); }
@@ -365,7 +366,28 @@ input:focus, select:focus, textarea:focus {
   white-space: nowrap;
   display: flex;
   align-items: center;
+  position: relative;
 }
+
+/* manere de redimensionare coloane - functioneaza cu mouse si cu degetul
+   (Pointer Events). Cel de pe ultima zi redimensioneaza proportional tot
+   blocul de zile fata de blocul de detalii; cele de pe coloanele de
+   atribute redimensioneaza fiecare coloana individual. */
+.col-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  bottom: 0;
+  width: 8px;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 5;
+}
+.col-resize-handle:hover,
+.col-resize-handle:active { background: var(--accent); opacity: 0.5; }
+.col-resize-handle-block { right: -5px; width: 10px; background: var(--navy); opacity: 0.25; }
+.col-resize-handle-block:hover,
+.col-resize-handle-block:active { opacity: 0.6; }
 
 .week-grid-empty {
   padding: 24px 20px;
@@ -379,7 +401,6 @@ input:focus, select:focus, textarea:focus {
 .week-grid-scroll { overflow-x: auto; }
 .week-grid-unified {
   display: grid;
-  min-width: 900px;
 }
 
 .week-course-bar {

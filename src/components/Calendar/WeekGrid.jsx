@@ -60,7 +60,30 @@ export const ATTRIBUTE_COLUMN_OPTIONS = [
 
 export const DEFAULT_ATTRIBUTE_COLUMNS = ['interval', 'trainer', 'room', 'responsible']
 
-const DAY_COLS = 7
+export const DAY_COLS = 7
+export const DEFAULT_DAYS_BLOCK_WIDTH = 42 * DAY_COLS
+export const DEFAULT_ATTR_COL_WIDTH = 100
+const MIN_DAYS_BLOCK_WIDTH = 24 * DAY_COLS
+const MIN_ATTR_COL_WIDTH = 50
+
+// Pointer Events (nu HTML5 drag) - functioneaza identic cu mouse-ul si cu
+// degetul. onDrag primeste diferenta orizontala (px) fata de punctul de
+// pornire, la fiecare miscare.
+function startColumnResize(e, onDrag) {
+  e.preventDefault()
+  e.stopPropagation()
+  const startX = e.clientX
+
+  function onPointerMove(moveEvent) {
+    onDrag(moveEvent.clientX - startX)
+  }
+  function onPointerUp() {
+    window.removeEventListener('pointermove', onPointerMove)
+    window.removeEventListener('pointerup', onPointerUp)
+  }
+  window.addEventListener('pointermove', onPointerMove)
+  window.addEventListener('pointerup', onPointerUp)
+}
 
 function CourseBar({ course, weekDays, barFields, colorPrefs, rowIndex, hoveredCourseId, onCourseClick, onCourseHover, onCourseLeave }) {
   const { startIdx, endIdx, continuesFromPrevious, continuesToNext } = courseSpanInWeek(course, weekDays)
@@ -103,15 +126,26 @@ function CourseBar({ course, weekDays, barFields, colorPrefs, rowIndex, hoveredC
 
 // Un singur "bloc" saptamanal: un grid unificat (antet + bare Gantt pe zile
 // inguste + coloane de atribute in dreapta, dupa modelul Excel), cu scroll
-// orizontal propriu. CalendarPage stivuieste mai multe astfel de blocuri,
-// unul sub altul, pentru derulare verticala continua.
-export default function WeekGrid({ weekDays, courses, barFields, colorPrefs, attrColumns, hoveredCourseId, onDayHeaderClick, onCourseClick, onCourseHover, onCourseLeave }) {
+// orizontal propriu si coloane redimensionabile. CalendarPage stivuieste mai
+// multe astfel de blocuri, unul sub altul, pentru derulare verticala
+// continua - latimile sunt comune tuturor blocurilor (redimensionezi o
+// data, se aplica peste tot).
+export default function WeekGrid({
+  weekDays, courses, barFields, colorPrefs, attrColumns, hoveredCourseId,
+  daysBlockWidth, attrColWidths, onDaysBlockWidthChange, onAttrColWidthChange,
+  onDayHeaderClick, onCourseClick, onCourseHover, onCourseLeave,
+}) {
   // ordinea coloanelor respecta exact ordinea salvata de user in Setari
   // (nu ordinea "implicita" din ATTRIBUTE_COLUMN_OPTIONS)
   const activeAttrColumns = (attrColumns || DEFAULT_ATTRIBUTE_COLUMNS)
     .map((key) => ATTRIBUTE_COLUMN_OPTIONS.find((c) => c.key === key))
     .filter(Boolean)
-  const gridTemplateColumns = `repeat(${DAY_COLS}, minmax(34px, 0.5fr)) repeat(${activeAttrColumns.length}, minmax(70px, 1fr))`
+
+  const dayColWidth = (daysBlockWidth || DEFAULT_DAYS_BLOCK_WIDTH) / DAY_COLS
+  const gridTemplateColumns = [
+    ...Array(DAY_COLS).fill(`${dayColWidth}px`),
+    ...activeAttrColumns.map((c) => `${attrColWidths?.[c.key] ?? DEFAULT_ATTR_COL_WIDTH}px`),
+  ].join(' ')
 
   const weekStartIso = toISODate(weekDays[0])
   const weekEndIso = toISODate(weekDays[6])
@@ -123,6 +157,20 @@ export default function WeekGrid({ weekDays, courses, barFields, colorPrefs, att
       const tb = b.start_time || '00:00'
       return ta.localeCompare(tb)
     })
+
+  function handleBlockDividerDrag(e) {
+    const startWidth = daysBlockWidth || DEFAULT_DAYS_BLOCK_WIDTH
+    startColumnResize(e, (dx) => {
+      onDaysBlockWidthChange(Math.max(MIN_DAYS_BLOCK_WIDTH, startWidth + dx))
+    })
+  }
+
+  function handleAttrColumnDrag(e, key) {
+    const startWidth = attrColWidths?.[key] ?? DEFAULT_ATTR_COL_WIDTH
+    startColumnResize(e, (dx) => {
+      onAttrColWidthChange(key, Math.max(MIN_ATTR_COL_WIDTH, startWidth + dx))
+    })
+  }
 
   return (
     <div className="week-grid-wrapper">
@@ -156,18 +204,30 @@ export default function WeekGrid({ weekDays, courses, barFields, colorPrefs, att
             {weekDays.map((date, i) => (
               <div
                 key={date.toISOString()}
-                className={`week-day-header ${checkIsToday(date) ? 'week-day-header-today' : ''}`}
+                className={`week-day-header ${checkIsToday(date) ? 'week-day-header-today' : ''} ${i === DAY_COLS - 1 ? 'week-day-header-last' : ''}`}
                 style={{ gridColumn: i + 1, gridRow: 1 }}
                 onClick={() => onDayHeaderClick(date)}
               >
                 <div className="week-day-header-name">{format(date, 'EEEEE', { locale: ro })}</div>
                 <div className="week-day-header-date">{format(date, 'd MMM', { locale: ro })}</div>
+                {i === DAY_COLS - 1 && activeAttrColumns.length > 0 && (
+                  <span
+                    className="col-resize-handle col-resize-handle-block"
+                    onPointerDown={handleBlockDividerDrag}
+                    title="Trage pentru a redimensiona proportional zilele vs. detaliile"
+                  />
+                )}
               </div>
             ))}
 
             {activeAttrColumns.map((col, i) => (
               <div key={col.key} className="week-attr-header" style={{ gridColumn: DAY_COLS + i + 1, gridRow: 1 }}>
                 {col.label}
+                <span
+                  className="col-resize-handle"
+                  onPointerDown={(e) => handleAttrColumnDrag(e, col.key)}
+                  title="Trage pentru a redimensiona aceasta coloana"
+                />
               </div>
             ))}
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { addMonths, subMonths, addWeeks, subWeeks, format } from 'date-fns'
 import { supabase } from '../../supabaseClient'
 import {
@@ -12,7 +12,7 @@ import { getBarStyle, DURATION_LEGEND } from '../../utils/colors'
 import { useAuth } from '../../contexts/AuthContext'
 import CourseModal from './CourseModal'
 import MonthGrid from './MonthGrid'
-import WeekGrid from './WeekGrid'
+import WeekGrid, { DEFAULT_DAYS_BLOCK_WIDTH, DEFAULT_ATTR_COL_WIDTH } from './WeekGrid'
 
 // Cate saptamani afisam stivuite, unele sub altele, in vizualizarea
 // saptamanala - "Saptamana anterioara/urmatoare" muta toata fereastra cu o
@@ -20,7 +20,7 @@ import WeekGrid from './WeekGrid'
 const WEEKS_VISIBLE = 4
 
 export default function CalendarPage() {
-  const { profile } = useAuth()
+  const { profile, updatePreferences } = useAuth()
   const [viewMode, setViewMode] = useState('month') // 'month' | 'week'
   const [anchorDate, setAnchorDate] = useState(new Date())
   const [courses, setCourses] = useState([])
@@ -29,6 +29,34 @@ export default function CalendarPage() {
   const [hoverInfo, setHoverInfo] = useState(null) // { course, top, left } | null
   const [hoveredCourseId, setHoveredCourseId] = useState(null) // pentru highlight/glow pe curs in tot calendarul
   const [dayDetail, setDayDetail] = useState(null) // Date | null - ziua pentru care aratam lista completa
+
+  // Latimile coloanelor din vizualizarea saptamanala - comune tuturor
+  // blocurilor stivuite (redimensionezi o data, se aplica peste tot).
+  // Pornesc din profilul Supabase (persistente, pe orice dispozitiv) si se
+  // salveaza automat, la scurt timp dupa ce te opresti din tras un maner.
+  const [daysBlockWidth, setDaysBlockWidth] = useState(profile?.week_days_block_width || DEFAULT_DAYS_BLOCK_WIDTH)
+  const [attrColWidths, setAttrColWidths] = useState(profile?.week_attr_col_widths || {})
+  const widthsMounted = useRef(false)
+
+  function handleAttrColWidthChange(key, width) {
+    setAttrColWidths((prev) => ({ ...prev, [key]: width }))
+  }
+
+  useEffect(() => {
+    // sare peste salvarea de la incarcarea initiala a paginii - salveaza
+    // doar dupa o modificare reala, facuta de user
+    if (!widthsMounted.current) {
+      widthsMounted.current = true
+      return
+    }
+    const timeout = setTimeout(() => {
+      updatePreferences({
+        week_days_block_width: Math.round(daysBlockWidth),
+        week_attr_col_widths: attrColWidths,
+      })
+    }, 800)
+    return () => clearTimeout(timeout)
+  }, [daysBlockWidth, attrColWidths])
 
   // Preferintele de afisare vin din profilul Supabase al userului (aceleasi
   // pe orice dispozitiv), cu valori implicite rezonabile daca nu s-au
@@ -166,6 +194,10 @@ export default function CalendarPage() {
               colorPrefs={colorPrefs}
               attrColumns={attrColumns}
               hoveredCourseId={hoveredCourseId}
+              daysBlockWidth={daysBlockWidth}
+              attrColWidths={attrColWidths}
+              onDaysBlockWidthChange={setDaysBlockWidth}
+              onAttrColWidthChange={handleAttrColWidthChange}
               onDayHeaderClick={(date) => setModalState({ initialDate: date })}
               onCourseClick={(course) => setModalState({ course })}
               onCourseHover={showHoverDetails}
