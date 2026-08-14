@@ -56,6 +56,7 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
   const [form, setForm] = useState(course ? pickFormFields(course) : emptyForm(toISODate(initialDate)))
   const [trainers, setTrainers] = useState([])
   const [rooms, setRooms] = useState([])
+  const [responsiblePersons, setResponsiblePersons] = useState([])
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -65,6 +66,7 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
   useEffect(() => {
     supabase.from('trainers').select('*').order('name').then(({ data }) => setTrainers(data || []))
     supabase.from('rooms').select('*').order('name').then(({ data }) => setRooms(data || []))
+    supabase.from('responsible_persons').select('*').order('name').then(({ data }) => setResponsiblePersons(data || []))
   }, [])
 
   // Sala/trainerul unui curs se salveaza ca text simplu, deci istoricul nu se pierde
@@ -82,6 +84,19 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
 
   const trainerOptions = optionsFor(trainers, form.trainer)
   const roomOptions = optionsFor(rooms, form.room)
+
+  // "Responsabil" ramane optional (nu are TBD, spre deosebire de trainer/sala),
+  // dar pastreaza acelasi mecanism de siguranta pentru valori vechi (nume care
+  // nu mai sunt in lista activa raman totusi vizibile la editare).
+  function responsibleOptionsFor(list, currentValue) {
+    const visible = list.filter((item) => item.active || item.name === currentValue)
+    const stillMissing = currentValue && !list.some((item) => item.name === currentValue)
+    if (stillMissing) {
+      visible.unshift({ id: `deleted-${currentValue}`, name: currentValue, active: false, deleted: true })
+    }
+    return visible
+  }
+  const responsibleOptions = responsibleOptionsFor(responsiblePersons, form.responsible)
 
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }))
@@ -262,7 +277,14 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
 
           <label>
             Responsabil
-            <input disabled={!canEdit} value={form.responsible || ''} onChange={(e) => update('responsible', e.target.value)} />
+            <select disabled={!canEdit} value={form.responsible || ''} onChange={(e) => update('responsible', e.target.value)}>
+              <option value="">-- alege responsabil --</option>
+              {responsibleOptions.map((r) => (
+                <option key={r.id} value={r.name}>
+                  {r.name}{!r.active ? (r.deleted ? ' (sters din lista)' : ' (inactiv)') : ''}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label>

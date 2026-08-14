@@ -106,7 +106,11 @@ function CourseBar({ course, weekDays, barFields, colorPrefs, rowIndex, hoveredC
 // orizontal propriu. CalendarPage stivuieste mai multe astfel de blocuri,
 // unul sub altul, pentru derulare verticala continua.
 export default function WeekGrid({ weekDays, courses, barFields, colorPrefs, attrColumns, hoveredCourseId, onDayHeaderClick, onCourseClick, onCourseHover, onCourseLeave }) {
-  const activeAttrColumns = ATTRIBUTE_COLUMN_OPTIONS.filter((c) => (attrColumns || DEFAULT_ATTRIBUTE_COLUMNS).includes(c.key))
+  // ordinea coloanelor respecta exact ordinea salvata de user in Setari
+  // (nu ordinea "implicita" din ATTRIBUTE_COLUMN_OPTIONS)
+  const activeAttrColumns = (attrColumns || DEFAULT_ATTRIBUTE_COLUMNS)
+    .map((key) => ATTRIBUTE_COLUMN_OPTIONS.find((c) => c.key === key))
+    .filter(Boolean)
   const gridTemplateColumns = `repeat(${DAY_COLS}, minmax(34px, 0.5fr)) repeat(${activeAttrColumns.length}, minmax(70px, 1fr))`
 
   const weekStartIso = toISODate(weekDays[0])

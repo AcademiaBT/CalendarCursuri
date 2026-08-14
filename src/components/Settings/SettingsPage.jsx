@@ -49,6 +49,18 @@ export default function SettingsPage() {
     setSaved(false)
   }
 
+  function moveAttrColumn(key, direction) {
+    setAttrColumns((prev) => {
+      const idx = prev.indexOf(key)
+      const newIdx = idx + direction
+      if (idx === -1 || newIdx < 0 || newIdx >= prev.length) return prev
+      const next = [...prev]
+      ;[next[idx], next[newIdx]] = [next[newIdx], next[idx]]
+      return next
+    })
+    setSaved(false)
+  }
+
   function updateColor(key, hex) {
     setCustomColors((prev) => ({ ...prev, [key]: hex }))
     setSaved(false)
@@ -109,17 +121,65 @@ export default function SettingsPage() {
         <h3>Coloane in tabelul saptamanal (dreapta zilelor)</h3>
         <p className="admin-hint">
           Cu cat alegi mai multe coloane, cu atat tabelul devine mai lat — peste un anumit numar
-          poate aparea scroll orizontal pe ecrane mai mici. Implicit sunt alese cele mai
-          folosite patru.
+          poate aparea scroll orizontal pe ecrane mai mici. Ordinea de mai jos e chiar ordinea
+          in care apar coloanele in tabel — foloseste sagetile ca sa le rearanjezi.
         </p>
-        <div className="settings-checkbox-list">
-          {ATTRIBUTE_COLUMN_OPTIONS.map((col) => (
-            <label key={col.key} className="settings-checkbox-row">
-              <input type="checkbox" checked={attrColumns.includes(col.key)} onChange={() => toggleAttrColumn(col.key)} />
-              {col.label}
-            </label>
-          ))}
-        </div>
+
+        {attrColumns.length === 0 ? (
+          <p className="admin-hint">Nicio coloana aleasa momentan.</p>
+        ) : (
+          <table className="admin-table" style={{ marginBottom: 14 }}>
+            <thead>
+              <tr><th>Coloana afisata</th><th>Ordine</th><th></th></tr>
+            </thead>
+            <tbody>
+              {attrColumns.map((key, index) => {
+                const col = ATTRIBUTE_COLUMN_OPTIONS.find((c) => c.key === key)
+                if (!col) return null
+                return (
+                  <tr key={key}>
+                    <td>{col.label}</td>
+                    <td>
+                      <button
+                        className="link-btn"
+                        disabled={index === 0}
+                        onClick={() => moveAttrColumn(key, -1)}
+                        title="Muta mai devreme"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        className="link-btn"
+                        disabled={index === attrColumns.length - 1}
+                        onClick={() => moveAttrColumn(key, 1)}
+                        title="Muta mai tarziu"
+                      >
+                        ↓
+                      </button>
+                    </td>
+                    <td>
+                      <button className="link-btn danger-text" onClick={() => toggleAttrColumn(key)}>elimina</button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+
+        {ATTRIBUTE_COLUMN_OPTIONS.some((col) => !attrColumns.includes(col.key)) && (
+          <>
+            <p className="admin-hint">Coloane disponibile, neafisate momentan:</p>
+            <div className="settings-checkbox-list">
+              {ATTRIBUTE_COLUMN_OPTIONS.filter((col) => !attrColumns.includes(col.key)).map((col) => (
+                <label key={col.key} className="settings-checkbox-row">
+                  <input type="checkbox" checked={false} onChange={() => toggleAttrColumn(col.key)} />
+                  {col.label}
+                </label>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       <div className="admin-section">
