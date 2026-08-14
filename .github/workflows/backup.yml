@@ -1,0 +1,30 @@
+name: Backup calendar (xlsx pe email)
+
+on:
+  schedule:
+    # ruleaza in fiecare zi; scriptul insusi decide daca trimite azi, in
+    # functie de frecventa aleasa de admin (zilnic/saptamanal/lunar)
+    - cron: '0 4 * * *'
+  workflow_dispatch: {} # permite rularea manuala din tab-ul Actions, pentru testare
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm install
+
+      - name: Verifica frecventa si trimite backup daca e cazul
+        run: node scripts/daily-backup.js
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          BREVO_SENDER_EMAIL: ${{ secrets.BREVO_SENDER_EMAIL }}
+          # la rulare manuala (workflow_dispatch), trimite indiferent de frecventa - util pentru test
+          FORCE_SEND: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}
