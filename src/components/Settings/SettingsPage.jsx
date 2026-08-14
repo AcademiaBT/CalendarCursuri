@@ -21,9 +21,15 @@ export default function SettingsPage() {
   const [distinctCategories, setDistinctCategories] = useState([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [dirty, setDirty] = useState(false)
   const [error, setError] = useState('')
   const [draggingKey, setDraggingKey] = useState(null)
   const rowRefs = useRef({})
+
+  function markDirty() {
+    setSaved(false)
+    setDirty(true)
+  }
 
   useEffect(() => {
     supabase
@@ -43,12 +49,12 @@ export default function SettingsPage() {
 
   function toggleField(key) {
     setSelectedFields((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]))
-    setSaved(false)
+    markDirty()
   }
 
   function toggleAttrColumn(key) {
     setAttrColumns((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]))
-    setSaved(false)
+    markDirty()
   }
 
   function moveAttrColumn(key, direction) {
@@ -60,7 +66,7 @@ export default function SettingsPage() {
       ;[next[idx], next[newIdx]] = [next[newIdx], next[idx]]
       return next
     })
-    setSaved(false)
+    markDirty()
   }
 
   // Drag & drop cu Pointer Events - functioneaza identic cu mouse-ul (laptop)
@@ -100,7 +106,7 @@ export default function SettingsPage() {
       window.removeEventListener('pointermove', onPointerMove)
       window.removeEventListener('pointerup', onPointerUp)
       setDraggingKey(null)
-      setSaved(false)
+      markDirty()
     }
 
     window.addEventListener('pointermove', onPointerMove)
@@ -109,7 +115,7 @@ export default function SettingsPage() {
 
   function updateColor(key, hex) {
     setCustomColors((prev) => ({ ...prev, [key]: hex }))
-    setSaved(false)
+    markDirty()
   }
 
   function resetColor(key) {
@@ -118,7 +124,7 @@ export default function SettingsPage() {
       delete next[key]
       return next
     })
-    setSaved(false)
+    markDirty()
   }
 
   async function handleSave() {
@@ -132,7 +138,10 @@ export default function SettingsPage() {
     })
     setSaving(false)
     if (error) setError(error.message)
-    else setSaved(true)
+    else {
+      setSaved(true)
+      setDirty(false)
+    }
   }
 
   const colorPickerValues =
@@ -206,7 +215,9 @@ export default function SettingsPage() {
                         onClick={() => moveAttrColumn(key, -1)}
                         title="Muta mai devreme"
                       >
-                        ↑
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+                          <path d="M6 15l6-6 6 6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
                       </button>
                       <button
                         className="reorder-btn"
@@ -214,7 +225,9 @@ export default function SettingsPage() {
                         onClick={() => moveAttrColumn(key, 1)}
                         title="Muta mai tarziu"
                       >
-                        ↓
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+                          <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
                       </button>
                     </td>
                     <td>
@@ -256,7 +269,7 @@ export default function SettingsPage() {
                 type="radio"
                 name="colorMode"
                 checked={colorMode === opt.value}
-                onChange={() => { setColorMode(opt.value); setSaved(false) }}
+                onChange={() => { setColorMode(opt.value); markDirty() }}
               />
               {opt.label}
             </label>
@@ -304,6 +317,15 @@ export default function SettingsPage() {
         {saved && <span className="auth-info" style={{ marginRight: 10 }}>Salvat</span>}
         <button onClick={handleSave} disabled={saving}>{saving ? 'Se salveaza...' : 'Salveaza preferintele'}</button>
       </div>
+
+      {dirty && (
+        <div className="floating-save-bar">
+          <span>Ai modificari nesalvate</span>
+          <button onClick={handleSave} disabled={saving}>
+            {saving ? 'Se salveaza...' : 'Salveaza modificarile'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

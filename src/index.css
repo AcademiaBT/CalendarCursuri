@@ -452,17 +452,37 @@ input:focus, select:focus, textarea:focus {
 .reorder-btn {
   background: var(--border);
   color: var(--navy);
-  font-size: 18px;
-  font-weight: 700;
   width: 40px;
   height: 40px;
   padding: 0;
   border-radius: 8px;
   margin-right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .reorder-btn:last-child { margin-right: 0; }
 .reorder-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 .reorder-btn:not(:disabled):hover { background: var(--accent-soft); opacity: 1; }
+
+.floating-save-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--navy);
+  color: white;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  box-shadow: 0 -6px 20px rgba(0,0,0,0.2);
+  z-index: 100;
+}
+.floating-save-bar span { font-size: 13px; }
+.floating-save-bar button { background: var(--accent); flex-shrink: 0; }
+.settings-page { padding-bottom: 70px; }
 
 @media (max-width: 720px) {
   .course-form { grid-template-columns: 1fr; }
