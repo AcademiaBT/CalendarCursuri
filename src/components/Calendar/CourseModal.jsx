@@ -4,7 +4,8 @@ import { useAuth } from '../../contexts/AuthContext'
 import { toISODate } from '../../utils/dateHelpers'
 import DateInputRO from '../DateInputRO'
 
-const COURSE_TYPES = ['live', 'online', 'blended', 'e-learning']
+const COURSE_TYPES = ['TBD', 'live', 'online', 'blended', 'e-learning']
+const TBD_OPTION = { id: 'tbd', name: 'TBD', active: true }
 
 // Doar aceste campuri apartin formularului. Cursul incarcat din baza de date
 // (prin select('*')) mai contine si alte coloane - id, created_at, created_by,
@@ -18,23 +19,28 @@ const FORM_FIELDS = [
   'responsible', 'invite_mail', 'catering', 'notes', 'course_area', 'target_audience',
 ]
 
+// trainer/sala/tip curs sunt obligatorii; cursurile mai vechi, salvate inainte
+// de aceasta regula, pot avea valoarea goala - le tratam ca "TBD" la afisare
 function pickFormFields(source) {
   const result = {}
   for (const key of FORM_FIELDS) {
     result[key] = source[key] ?? ''
   }
+  if (!result.trainer) result.trainer = 'TBD'
+  if (!result.room) result.room = 'TBD'
+  if (!result.course_type) result.course_type = 'TBD'
   return result
 }
 
 const emptyForm = (startDate) => ({
   name: '',
-  course_type: 'live',
+  course_type: 'TBD',
   start_date: startDate,
   end_date: startDate,
   start_time: '09:00',
   end_time: '17:00',
-  trainer: '',
-  room: '',
+  trainer: 'TBD',
+  room: 'TBD',
   participants_group: '',
   participants_count: '',
   responsible: '',
@@ -67,11 +73,11 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
   // between timp dezactivata sau stearsa din lista), ca sa nu para "disparuta" la editare.
   function optionsFor(list, currentValue) {
     const visible = list.filter((item) => item.active || item.name === currentValue)
-    const stillMissing = currentValue && !list.some((item) => item.name === currentValue)
+    const stillMissing = currentValue && currentValue !== 'TBD' && !list.some((item) => item.name === currentValue)
     if (stillMissing) {
       visible.unshift({ id: `deleted-${currentValue}`, name: currentValue, active: false, deleted: true })
     }
-    return visible
+    return [TBD_OPTION, ...visible]
   }
 
   const trainerOptions = optionsFor(trainers, form.trainer)
@@ -82,7 +88,7 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
   }
 
   async function findFieldConflict(field, value) {
-    if (!value) return null
+    if (!value || value === 'TBD') return null
 
     let query = supabase
       .from('courses')
@@ -209,9 +215,8 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
             </div>
           </label>
           <label>
-            Trainer
-            <select disabled={!canEdit} value={form.trainer || ''} onChange={(e) => update('trainer', e.target.value)}>
-              <option value="">-- alege trainer --</option>
+            Trainer *
+            <select required disabled={!canEdit} value={form.trainer || 'TBD'} onChange={(e) => update('trainer', e.target.value)}>
               {trainerOptions.map((t) => (
                 <option key={t.id} value={t.name}>
                   {t.name}{!t.active ? (t.deleted ? ' (sters din lista)' : ' (inactiv)') : ''}
@@ -228,9 +233,8 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
             </div>
           </label>
           <label>
-            Sala
-            <select disabled={!canEdit} value={form.room || ''} onChange={(e) => update('room', e.target.value)}>
-              <option value="">-- alege sala --</option>
+            Sala *
+            <select required disabled={!canEdit} value={form.room || 'TBD'} onChange={(e) => update('room', e.target.value)}>
               {roomOptions.map((r) => (
                 <option key={r.id} value={r.name}>
                   {r.name}{r.capacity ? ` (${r.capacity} locuri)` : ''}{!r.active ? (r.deleted ? ' (sters din lista)' : ' (inactiv)') : ''}
@@ -240,8 +244,8 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
           </label>
 
           <label>
-            Tip curs
-            <select disabled={!canEdit} value={form.course_type || ''} onChange={(e) => update('course_type', e.target.value)}>
+            Tip curs *
+            <select required disabled={!canEdit} value={form.course_type || 'TBD'} onChange={(e) => update('course_type', e.target.value)}>
               {COURSE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </label>
