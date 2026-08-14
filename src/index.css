@@ -251,7 +251,9 @@ input:focus, select:focus, textarea:focus {
 .course-hover-popover {
   position: fixed;
   z-index: 200;
-  background: white;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 12px;
