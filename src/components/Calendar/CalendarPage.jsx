@@ -33,6 +33,7 @@ export default function CalendarPage() {
   // pe orice dispozitiv), cu valori implicite rezonabile daca nu s-au
   // configurat inca (profil abia creat).
   const barFields = profile?.week_bar_fields || ['time']
+  const attrColumns = profile?.week_attribute_columns || ['interval', 'trainer', 'room', 'responsible']
   const colorPrefs = {
     colorMode: profile?.color_mode || 'duration',
     customColors: profile?.custom_colors || {},
@@ -155,6 +156,7 @@ export default function CalendarPage() {
               courses={courses}
               barFields={barFields}
               colorPrefs={colorPrefs}
+              attrColumns={attrColumns}
               onDayHeaderClick={(date) => setModalState({ initialDate: date })}
               onCourseClick={(course) => setModalState({ course })}
               onCourseHover={showHoverDetails}

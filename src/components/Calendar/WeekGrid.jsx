@@ -42,8 +42,10 @@ export const BAR_FIELD_OPTIONS = [
 // Coloanele de atribute afisate in dreapta zilelor, dupa modelul din Excel
 // (Interval orar, Trainer, Nr zile training, Participanti, etc). Spre
 // deosebire de BAR_FIELD_OPTIONS (configurabile din Setari, afisate IN bara),
-// astea sunt un tabel fix, mereu vizibil, un rand per curs.
-const ATTRIBUTE_COLUMNS = [
+// astea sunt un tabel separat, un rand per curs - dar la fel, userul alege
+// din Setari pe care le vrea vizibile (implicit doar cateva, ca sa incapa pe
+// ecran fara scroll orizontal).
+export const ATTRIBUTE_COLUMN_OPTIONS = [
   { key: 'interval', label: 'Interval orar', getValue: (c) => (c.start_time ? `${c.start_time.slice(0, 5)}-${c.end_time?.slice(0, 5) || ''}` : '') },
   { key: 'trainer', label: 'Trainer', getValue: (c) => c.trainer || '' },
   { key: 'days', label: 'Nr zile', getValue: (c) => String(courseDurationDays(c.start_date, c.end_date)) },
@@ -56,9 +58,9 @@ const ATTRIBUTE_COLUMNS = [
   { key: 'notes', label: 'Observatii', getValue: (c) => c.notes || '' },
 ]
 
+export const DEFAULT_ATTRIBUTE_COLUMNS = ['interval', 'trainer', 'room', 'responsible']
+
 const DAY_COLS = 7
-const ATTR_COLS = ATTRIBUTE_COLUMNS.length
-const GRID_TEMPLATE_COLUMNS = `repeat(${DAY_COLS}, minmax(42px, 0.6fr)) repeat(${ATTR_COLS}, minmax(92px, 1fr))`
 
 function CourseBar({ course, weekDays, barFields, colorPrefs, rowIndex, onCourseClick, onCourseHover, onCourseLeave }) {
   const { startIdx, endIdx, continuesFromPrevious, continuesToNext } = courseSpanInWeek(course, weekDays)
@@ -102,7 +104,10 @@ function CourseBar({ course, weekDays, barFields, colorPrefs, rowIndex, onCourse
 // inguste + coloane de atribute in dreapta, dupa modelul Excel), cu scroll
 // orizontal propriu. CalendarPage stivuieste mai multe astfel de blocuri,
 // unul sub altul, pentru derulare verticala continua.
-export default function WeekGrid({ weekDays, courses, barFields, colorPrefs, onDayHeaderClick, onCourseClick, onCourseHover, onCourseLeave }) {
+export default function WeekGrid({ weekDays, courses, barFields, colorPrefs, attrColumns, onDayHeaderClick, onCourseClick, onCourseHover, onCourseLeave }) {
+  const activeAttrColumns = ATTRIBUTE_COLUMN_OPTIONS.filter((c) => (attrColumns || DEFAULT_ATTRIBUTE_COLUMNS).includes(c.key))
+  const gridTemplateColumns = `repeat(${DAY_COLS}, minmax(34px, 0.5fr)) repeat(${activeAttrColumns.length}, minmax(70px, 1fr))`
+
   const weekStartIso = toISODate(weekDays[0])
   const weekEndIso = toISODate(weekDays[6])
   const weekCourses = courses
@@ -139,7 +144,7 @@ export default function WeekGrid({ weekDays, courses, barFields, colorPrefs, onD
           <div
             className="week-grid-unified"
             style={{
-              gridTemplateColumns: GRID_TEMPLATE_COLUMNS,
+              gridTemplateColumns,
               gridTemplateRows: `auto repeat(${weekCourses.length}, minmax(22px, auto))`,
             }}
           >
@@ -155,7 +160,7 @@ export default function WeekGrid({ weekDays, courses, barFields, colorPrefs, onD
               </div>
             ))}
 
-            {ATTRIBUTE_COLUMNS.map((col, i) => (
+            {activeAttrColumns.map((col, i) => (
               <div key={col.key} className="week-attr-header" style={{ gridColumn: DAY_COLS + i + 1, gridRow: 1 }}>
                 {col.label}
               </div>
@@ -173,7 +178,7 @@ export default function WeekGrid({ weekDays, courses, barFields, colorPrefs, onD
                   onCourseHover={onCourseHover}
                   onCourseLeave={onCourseLeave}
                 />
-                {ATTRIBUTE_COLUMNS.map((col, colIndex) => {
+                {activeAttrColumns.map((col, colIndex) => {
                   const value = col.getValue(c)
                   return (
                     <div

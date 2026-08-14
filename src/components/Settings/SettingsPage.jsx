@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../contexts/AuthContext'
-import { BAR_FIELD_OPTIONS } from '../Calendar/WeekGrid'
+import { BAR_FIELD_OPTIONS, ATTRIBUTE_COLUMN_OPTIONS } from '../Calendar/WeekGrid'
 import { DURATION_LEGEND, colorKeyFor } from '../../utils/colors'
 
 const COLOR_MODE_OPTIONS = [
@@ -14,6 +14,7 @@ export default function SettingsPage() {
   const { profile, updatePreferences } = useAuth()
 
   const [selectedFields, setSelectedFields] = useState(profile?.week_bar_fields || ['time'])
+  const [attrColumns, setAttrColumns] = useState(profile?.week_attribute_columns || ['interval', 'trainer', 'room', 'responsible'])
   const [colorMode, setColorMode] = useState(profile?.color_mode || 'duration')
   const [customColors, setCustomColors] = useState(profile?.custom_colors || {})
   const [distinctResponsible, setDistinctResponsible] = useState([])
@@ -43,6 +44,11 @@ export default function SettingsPage() {
     setSaved(false)
   }
 
+  function toggleAttrColumn(key) {
+    setAttrColumns((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]))
+    setSaved(false)
+  }
+
   function updateColor(key, hex) {
     setCustomColors((prev) => ({ ...prev, [key]: hex }))
     setSaved(false)
@@ -62,6 +68,7 @@ export default function SettingsPage() {
     setError('')
     const { error } = await updatePreferences({
       week_bar_fields: selectedFields,
+      week_attribute_columns: attrColumns,
       color_mode: colorMode,
       custom_colors: customColors,
     })
@@ -93,6 +100,23 @@ export default function SettingsPage() {
             <label key={field.key} className="settings-checkbox-row">
               <input type="checkbox" checked={selectedFields.includes(field.key)} onChange={() => toggleField(field.key)} />
               {field.label}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="admin-section">
+        <h3>Coloane in tabelul saptamanal (dreapta zilelor)</h3>
+        <p className="admin-hint">
+          Cu cat alegi mai multe coloane, cu atat tabelul devine mai lat — peste un anumit numar
+          poate aparea scroll orizontal pe ecrane mai mici. Implicit sunt alese cele mai
+          folosite patru.
+        </p>
+        <div className="settings-checkbox-list">
+          {ATTRIBUTE_COLUMN_OPTIONS.map((col) => (
+            <label key={col.key} className="settings-checkbox-row">
+              <input type="checkbox" checked={attrColumns.includes(col.key)} onChange={() => toggleAttrColumn(col.key)} />
+              {col.label}
             </label>
           ))}
         </div>
