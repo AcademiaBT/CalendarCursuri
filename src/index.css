@@ -434,6 +434,36 @@ input:focus, select:focus, textarea:focus {
 .settings-checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text); cursor: pointer; }
 .admin-table td .link-btn { margin-right: 6px; }
 
+/* reordonare coloane in Setari: drag & drop + sageti mari, ca alternativa la click */
+.drag-handle {
+  cursor: grab;
+  font-size: 20px;
+  color: var(--text-muted);
+  padding: 6px 10px;
+  touch-action: none;
+  user-select: none;
+  display: inline-block;
+}
+.drag-handle:active { cursor: grabbing; }
+.settings-row-dragging {
+  background: var(--accent-soft);
+  opacity: 0.85;
+}
+.reorder-btn {
+  background: var(--border);
+  color: var(--navy);
+  font-size: 18px;
+  font-weight: 700;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 8px;
+  margin-right: 8px;
+}
+.reorder-btn:last-child { margin-right: 0; }
+.reorder-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.reorder-btn:not(:disabled):hover { background: var(--accent-soft); opacity: 1; }
+
 @media (max-width: 720px) {
   .course-form { grid-template-columns: 1fr; }
   .navbar { flex-wrap: wrap; gap: 10px; }

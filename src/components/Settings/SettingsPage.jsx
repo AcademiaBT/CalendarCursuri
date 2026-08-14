@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../contexts/AuthContext'
 import { BAR_FIELD_OPTIONS, ATTRIBUTE_COLUMN_OPTIONS } from '../Calendar/WeekGrid'
@@ -22,6 +22,8 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
+  const [draggingKey, setDraggingKey] = useState(null)
+  const rowRefs = useRef({})
 
   useEffect(() => {
     supabase
@@ -59,6 +61,50 @@ export default function SettingsPage() {
       return next
     })
     setSaved(false)
+  }
+
+  // Drag & drop cu Pointer Events - functioneaza identic cu mouse-ul (laptop)
+  // si cu degetul (telefon/tableta), spre deosebire de HTML5 drag-and-drop
+  // clasic, care nu merge bine pe ecrane touch.
+  function handleDragStart(e, key) {
+    e.preventDefault()
+    setDraggingKey(key)
+    let order = attrColumns
+
+    function onPointerMove(moveEvent) {
+      const y = moveEvent.clientY
+      let closestIndex = 0
+      let closestDist = Infinity
+      order.forEach((k, idx) => {
+        const el = rowRefs.current[k]
+        if (!el) return
+        const rect = el.getBoundingClientRect()
+        const center = rect.top + rect.height / 2
+        const dist = Math.abs(center - y)
+        if (dist < closestDist) {
+          closestDist = dist
+          closestIndex = idx
+        }
+      })
+      const draggedIndex = order.indexOf(key)
+      if (closestIndex !== draggedIndex) {
+        const next = [...order]
+        next.splice(draggedIndex, 1)
+        next.splice(closestIndex, 0, key)
+        order = next
+        setAttrColumns(next)
+      }
+    }
+
+    function onPointerUp() {
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('pointerup', onPointerUp)
+      setDraggingKey(null)
+      setSaved(false)
+    }
+
+    window.addEventListener('pointermove', onPointerMove)
+    window.addEventListener('pointerup', onPointerUp)
   }
 
   function updateColor(key, hex) {
@@ -122,7 +168,8 @@ export default function SettingsPage() {
         <p className="admin-hint">
           Cu cat alegi mai multe coloane, cu atat tabelul devine mai lat — peste un anumit numar
           poate aparea scroll orizontal pe ecrane mai mici. Ordinea de mai jos e chiar ordinea
-          in care apar coloanele in tabel — foloseste sagetile ca sa le rearanjezi.
+          in care apar coloanele in tabel — trage de mânerul ⠿ ca sa le rearanjezi, sau
+          foloseste sagetile.
         </p>
 
         {attrColumns.length === 0 ? (
@@ -130,18 +177,31 @@ export default function SettingsPage() {
         ) : (
           <table className="admin-table" style={{ marginBottom: 14 }}>
             <thead>
-              <tr><th>Coloana afisata</th><th>Ordine</th><th></th></tr>
+              <tr><th></th><th>Coloana afisata</th><th>Ordine</th><th></th></tr>
             </thead>
             <tbody>
               {attrColumns.map((key, index) => {
                 const col = ATTRIBUTE_COLUMN_OPTIONS.find((c) => c.key === key)
                 if (!col) return null
                 return (
-                  <tr key={key}>
+                  <tr
+                    key={key}
+                    ref={(el) => { rowRefs.current[key] = el }}
+                    className={draggingKey === key ? 'settings-row-dragging' : ''}
+                  >
+                    <td>
+                      <span
+                        className="drag-handle"
+                        onPointerDown={(e) => handleDragStart(e, key)}
+                        title="Trage pentru reordonare"
+                      >
+                        ⠿
+                      </span>
+                    </td>
                     <td>{col.label}</td>
                     <td>
                       <button
-                        className="link-btn"
+                        className="reorder-btn"
                         disabled={index === 0}
                         onClick={() => moveAttrColumn(key, -1)}
                         title="Muta mai devreme"
@@ -149,7 +209,7 @@ export default function SettingsPage() {
                         ↑
                       </button>
                       <button
-                        className="link-btn"
+                        className="reorder-btn"
                         disabled={index === attrColumns.length - 1}
                         onClick={() => moveAttrColumn(key, 1)}
                         title="Muta mai tarziu"
