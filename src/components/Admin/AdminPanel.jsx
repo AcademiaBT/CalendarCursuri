@@ -223,6 +223,7 @@ function BackupSettingsPanel() {
           <option value="daily">Zilnic</option>
           <option value="weekly">Saptamanal</option>
           <option value="monthly">Lunar</option>
+          <option value="disabled">Fara backup (dezactivat)</option>
         </select>
       </label>
 
