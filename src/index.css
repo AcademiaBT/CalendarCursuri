@@ -469,20 +469,21 @@ input:focus, select:focus, textarea:focus {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
-  background: var(--navy);
+  top: 0;
+  background: var(--danger);
   color: white;
   padding: 12px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  box-shadow: 0 -6px 20px rgba(0,0,0,0.2);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
   z-index: 100;
 }
-.floating-save-bar span { font-size: 13px; }
-.floating-save-bar button { background: var(--accent); flex-shrink: 0; }
-.settings-page { padding-bottom: 70px; }
+.floating-save-bar span { font-size: 13px; font-weight: 600; }
+.floating-save-bar button { background: var(--navy); flex-shrink: 0; }
+.settings-page { padding-top: 4px; }
+.settings-page-with-floating-bar { padding-top: 60px; }
 
 @media (max-width: 720px) {
   .course-form { grid-template-columns: 1fr; }

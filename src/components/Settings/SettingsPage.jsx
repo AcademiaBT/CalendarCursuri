@@ -152,7 +152,7 @@ export default function SettingsPage() {
       : distinctCategories.map((cat) => ({ key: colorKeyFor('category', cat), label: cat, defaultHex: '#888888' }))
 
   return (
-    <div className="settings-page">
+    <div className={`settings-page ${dirty ? 'settings-page-with-floating-bar' : ''}`}>
       <h2>Setari</h2>
       <p className="admin-hint">
         Preferintele de mai jos sunt personale — se salveaza in contul tau si te urmaresc pe orice
