@@ -7,7 +7,7 @@ const MAX_VISIBLE_PER_DAY = 3
 // Componenta pur vizuala pentru grila lunara. Nu tine stare proprie -
 // primeste tot ce are nevoie prin props si anunta parintele (CalendarPage)
 // prin callback-uri cand se intampla ceva (click pe zi, pe curs, hover etc).
-export default function MonthGrid({ grid, courses, colorPrefs, onDayClick, onCourseClick, onCourseHover, onCourseLeave, onMoreClick }) {
+export default function MonthGrid({ grid, courses, colorPrefs, hoveredCourseId, onDayClick, onCourseClick, onCourseHover, onCourseLeave, onMoreClick }) {
   const numWeeks = grid.length / 7
 
   return (
@@ -38,7 +38,7 @@ export default function MonthGrid({ grid, courses, colorPrefs, onDayClick, onCou
                 return (
                   <div
                     key={c.id}
-                    className="course-chip"
+                    className={`course-chip ${c.id === hoveredCourseId ? 'course-chip-highlighted' : ''}`}
                     style={{ background: style.bg, borderLeft: `4px solid ${style.border}`, color: style.text }}
                     onMouseEnter={(e) => onCourseHover(e, c)}
                     onMouseLeave={onCourseLeave}

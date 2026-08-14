@@ -27,6 +27,7 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true)
   const [modalState, setModalState] = useState(null) // { initialDate } | { course } | null
   const [hoverInfo, setHoverInfo] = useState(null) // { course, top, left } | null
+  const [hoveredCourseId, setHoveredCourseId] = useState(null) // pentru highlight/glow pe curs in tot calendarul
   const [dayDetail, setDayDetail] = useState(null) // Date | null - ziua pentru care aratam lista completa
 
   // Preferintele de afisare vin din profilul Supabase al userului (aceleasi
@@ -64,6 +65,12 @@ export default function CalendarPage() {
       top = rect.top - 6 - 180
     }
     setHoverInfo({ course, top, left })
+    setHoveredCourseId(course.id)
+  }
+
+  function clearHover() {
+    setHoverInfo(null)
+    setHoveredCourseId(null)
   }
 
   const loadCourses = useCallback(async () => {
@@ -141,10 +148,11 @@ export default function CalendarPage() {
           grid={monthGrid}
           courses={courses}
           colorPrefs={colorPrefs}
+          hoveredCourseId={hoveredCourseId}
           onDayClick={(date) => setModalState({ initialDate: date })}
           onCourseClick={(course) => setModalState({ course })}
           onCourseHover={showHoverDetails}
-          onCourseLeave={() => setHoverInfo(null)}
+          onCourseLeave={clearHover}
           onMoreClick={(date) => setDayDetail(date)}
         />
       ) : (
@@ -157,10 +165,11 @@ export default function CalendarPage() {
               barFields={barFields}
               colorPrefs={colorPrefs}
               attrColumns={attrColumns}
+              hoveredCourseId={hoveredCourseId}
               onDayHeaderClick={(date) => setModalState({ initialDate: date })}
               onCourseClick={(course) => setModalState({ course })}
               onCourseHover={showHoverDetails}
-              onCourseLeave={() => setHoverInfo(null)}
+              onCourseLeave={clearHover}
             />
           ))}
         </div>
