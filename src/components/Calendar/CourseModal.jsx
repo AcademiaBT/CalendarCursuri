@@ -201,24 +201,13 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
             <input required disabled={!canEdit} value={form.name} onChange={(e) => update('name', e.target.value)} />
           </label>
 
-          <label>
-            Data start *
-            <DateInputRO required disabled={!canEdit} value={form.start_date} onChange={(v) => update('start_date', v)} />
+          <label className="span-2-of-3">
+            Data + ora start *
+            <div className="datetime-row">
+              <DateInputRO required disabled={!canEdit} value={form.start_date} onChange={(v) => update('start_date', v)} />
+              <input type="time" disabled={!canEdit} value={form.start_time || ''} onChange={(e) => update('start_time', e.target.value)} />
+            </div>
           </label>
-          <label>
-            Data sfarsit *
-            <DateInputRO required disabled={!canEdit} value={form.end_date} onChange={(v) => update('end_date', v)} />
-          </label>
-
-          <label>
-            Ora start
-            <input type="time" disabled={!canEdit} value={form.start_time || ''} onChange={(e) => update('start_time', e.target.value)} />
-          </label>
-          <label>
-            Ora sfarsit
-            <input type="time" disabled={!canEdit} value={form.end_time || ''} onChange={(e) => update('end_time', e.target.value)} />
-          </label>
-
           <label>
             Trainer
             <select disabled={!canEdit} value={form.trainer || ''} onChange={(e) => update('trainer', e.target.value)}>
@@ -231,6 +220,13 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
             </select>
           </label>
 
+          <label className="span-2-of-3">
+            Data + ora sfarsit *
+            <div className="datetime-row">
+              <DateInputRO required disabled={!canEdit} value={form.end_date} onChange={(v) => update('end_date', v)} />
+              <input type="time" disabled={!canEdit} value={form.end_time || ''} onChange={(e) => update('end_time', e.target.value)} />
+            </div>
+          </label>
           <label>
             Sala
             <select disabled={!canEdit} value={form.room || ''} onChange={(e) => update('room', e.target.value)}>
