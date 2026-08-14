@@ -18,6 +18,9 @@ create table if not exists public.profiles (
   week_bar_fields jsonb not null default '["time"]'::jsonb,
   color_mode text not null default 'duration' check (color_mode in ('duration','responsible','category')),
   custom_colors jsonb not null default '{}'::jsonb,
+  -- coloanele de atribute afisate in dreapta zilelor, in vizualizarea saptamanala
+  -- (implicit putine, ca sa incapa pe ecran fara scroll orizontal)
+  week_attribute_columns jsonb not null default '["interval","trainer","room","responsible"]'::jsonb,
   created_at timestamptz default now()
 );
 
@@ -25,6 +28,7 @@ create table if not exists public.profiles (
 alter table public.profiles add column if not exists week_bar_fields jsonb not null default '["time"]'::jsonb;
 alter table public.profiles add column if not exists color_mode text not null default 'duration';
 alter table public.profiles add column if not exists custom_colors jsonb not null default '{}'::jsonb;
+alter table public.profiles add column if not exists week_attribute_columns jsonb not null default '["interval","trainer","room","responsible"]'::jsonb;
 alter table public.profiles drop constraint if exists profiles_color_mode_check;
 alter table public.profiles add constraint profiles_color_mode_check check (color_mode in ('duration','responsible','category'));
 
@@ -101,6 +105,17 @@ create table if not exists public.rooms (
 );
 
 -- ------------------------------------------------------------
+-- 3bis. RESPONSABILI (sursa dropdown pentru campul "Responsabil" de pe
+--       curs, editabila doar de admin - la fel ca traineri/sali)
+-- ------------------------------------------------------------
+create table if not exists public.responsible_persons (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique,
+  active boolean not null default true,
+  created_at timestamptz default now()
+);
+
+-- ------------------------------------------------------------
 -- 4. CURSURI
 -- ------------------------------------------------------------
 create table if not exists public.courses (
@@ -166,7 +181,7 @@ as $$
 declare
   conflict_row record;
 begin
-  if new.room is null or btrim(new.room) = '' then
+  if new.room is null or btrim(new.room) = '' or new.room = 'TBD' then
     return new;
   end if;
 
@@ -212,7 +227,7 @@ as $$
 declare
   conflict_row record;
 begin
-  if new.trainer is null or btrim(new.trainer) = '' then
+  if new.trainer is null or btrim(new.trainer) = '' or new.trainer = 'TBD' then
     return new;
   end if;
 
@@ -272,13 +287,32 @@ alter table public.courses drop constraint if exists courses_no_room_overlap;
 alter table public.courses
   add constraint courses_no_room_overlap
   exclude using gist (room with =, period with &&)
-  where (room is not null and room <> '');
+  where (room is not null and room <> '' and room <> 'TBD');
 
 alter table public.courses drop constraint if exists courses_no_trainer_overlap;
 alter table public.courses
   add constraint courses_no_trainer_overlap
   exclude using gist (trainer with =, period with &&)
-  where (trainer is not null and trainer <> '');
+  where (trainer is not null and trainer <> '' and trainer <> 'TBD');
+
+-- ------------------------------------------------------------
+-- 4quater. SETARI BACKUP AUTOMAT (export xlsx complet trimis pe email,
+--       cu frecventa aleasa de admin din aplicatie - vezi Administrare).
+--       Un singur rand (id=1); citit/actualizat de scriptul rulat de
+--       GitHub Actions (.github/workflows/backup.yml).
+-- ------------------------------------------------------------
+create table if not exists public.backup_settings (
+  id int primary key default 1,
+  frequency text not null default 'weekly' check (frequency in ('daily','weekly','monthly')),
+  recipient_emails text not null default '',
+  last_sent_at timestamptz,
+  updated_at timestamptz default now(),
+  constraint backup_settings_singleton check (id = 1)
+);
+
+insert into public.backup_settings (id, frequency, recipient_emails)
+values (1, 'weekly', '')
+on conflict (id) do nothing;
 
 -- ------------------------------------------------------------
 -- 5. ROW LEVEL SECURITY
@@ -286,7 +320,9 @@ alter table public.courses
 alter table public.profiles enable row level security;
 alter table public.trainers enable row level security;
 alter table public.rooms enable row level security;
+alter table public.responsible_persons enable row level security;
 alter table public.courses enable row level security;
+alter table public.backup_settings enable row level security;
 
 -- PROFILES: fiecare isi vede propriul profil; adminul vede tot
 drop policy if exists "profiles_select" on public.profiles;
@@ -339,6 +375,23 @@ drop policy if exists "rooms_admin_delete" on public.rooms;
 create policy "rooms_admin_delete" on public.rooms for delete
   using (public.is_admin());
 
+-- RESPONSABILI: acelasi model ca la trainers/rooms
+drop policy if exists "responsible_persons_select" on public.responsible_persons;
+create policy "responsible_persons_select" on public.responsible_persons for select
+  using (auth.role() = 'authenticated');
+
+drop policy if exists "responsible_persons_admin_write" on public.responsible_persons;
+create policy "responsible_persons_admin_write" on public.responsible_persons for insert
+  with check (public.is_admin());
+
+drop policy if exists "responsible_persons_admin_update" on public.responsible_persons;
+create policy "responsible_persons_admin_update" on public.responsible_persons for update
+  using (public.is_admin());
+
+drop policy if exists "responsible_persons_admin_delete" on public.responsible_persons;
+create policy "responsible_persons_admin_delete" on public.responsible_persons for delete
+  using (public.is_admin());
+
 -- COURSES: orice user autentificat vede toate cursurile (e un calendar comun);
 -- adauga doar pentru sine; editeaza/sterge propriile cursuri sau, daca e admin, orice curs
 drop policy if exists "courses_select" on public.courses;
@@ -356,6 +409,16 @@ create policy "courses_update" on public.courses for update
 drop policy if exists "courses_delete" on public.courses;
 create policy "courses_delete" on public.courses for delete
   using (created_by = auth.uid() or public.is_admin());
+
+-- BACKUP_SETTINGS: orice user autentificat vede setarea curenta (afisata
+-- informativ); doar adminul o poate schimba
+drop policy if exists "backup_settings_select" on public.backup_settings;
+create policy "backup_settings_select" on public.backup_settings for select
+  using (auth.role() = 'authenticated');
+
+drop policy if exists "backup_settings_admin_update" on public.backup_settings;
+create policy "backup_settings_admin_update" on public.backup_settings for update
+  using (public.is_admin());
 
 -- ------------------------------------------------------------
 -- 6. DATE INITIALE (preluate din fisierul Excel atasat)

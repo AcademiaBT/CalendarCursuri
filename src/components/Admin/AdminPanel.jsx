@@ -171,6 +171,86 @@ function ListManager({ title, table, extraColumns = [], importHint }) {
   )
 }
 
+function BackupSettingsPanel() {
+  const [settings, setSettings] = useState(null)
+  const [frequency, setFrequency] = useState('weekly')
+  const [emails, setEmails] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
+
+  async function load() {
+    const { data, error } = await supabase.from('backup_settings').select('*').eq('id', 1).single()
+    if (error) setError(error.message)
+    else {
+      setSettings(data)
+      setFrequency(data.frequency)
+      setEmails(data.recipient_emails || '')
+    }
+  }
+
+  useEffect(() => { load() }, [])
+
+  async function handleSave() {
+    setSaving(true)
+    setError('')
+    const { error } = await supabase
+      .from('backup_settings')
+      .update({ frequency, recipient_emails: emails.trim(), updated_at: new Date().toISOString() })
+      .eq('id', 1)
+    setSaving(false)
+    if (error) setError(error.message)
+    else {
+      setSaved(true)
+      load()
+    }
+  }
+
+  return (
+    <div className="admin-section">
+      <h3>Backup automat (export xlsx pe email)</h3>
+      <p className="admin-hint">
+        Trimite periodic, automat, tot calendarul de cursuri, ca fisier Excel, la adresa
+        (adresele) de mai jos. Necesita o configurare unica in GitHub (secretele Brevo) —
+        vezi README-ul proiectului, sectiunea "Backup automat".
+      </p>
+
+      {error && <div className="auth-error">{error}</div>}
+
+      <label className="settings-checkbox-row" style={{ display: 'block', marginBottom: 10 }}>
+        Frecventa
+        <select value={frequency} onChange={(e) => { setFrequency(e.target.value); setSaved(false) }} style={{ marginLeft: 10 }}>
+          <option value="daily">Zilnic</option>
+          <option value="weekly">Saptamanal</option>
+          <option value="monthly">Lunar</option>
+        </select>
+      </label>
+
+      <label style={{ display: 'block', marginBottom: 10 }}>
+        <div className="admin-hint" style={{ marginBottom: 4 }}>Adresa (sau adrese, separate prin virgula)</div>
+        <input
+          style={{ width: '100%', maxWidth: 420 }}
+          placeholder="ex: costin.muresan@yahoo.com, altcineva@exemplu.com"
+          value={emails}
+          onChange={(e) => { setEmails(e.target.value); setSaved(false) }}
+        />
+      </label>
+
+      {settings?.last_sent_at && (
+        <p className="admin-hint">
+          Ultimul backup trimis: {new Date(settings.last_sent_at).toLocaleString('ro-RO')}
+        </p>
+      )}
+
+      <div className="modal-actions">
+        <div className="spacer" />
+        {saved && <span className="auth-info" style={{ marginRight: 10 }}>Salvat</span>}
+        <button onClick={handleSave} disabled={saving}>{saving ? 'Se salveaza...' : 'Salveaza'}</button>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminPanel() {
   return (
     <div className="admin-page">
@@ -188,6 +268,7 @@ export default function AdminPanel() {
         importHint="Fisier cu doua coloane: nume sala, capacitate (optional)."
       />
       <ListManager title="Responsabili" table="responsible_persons" />
+      <BackupSettingsPanel />
     </div>
   )
 }
