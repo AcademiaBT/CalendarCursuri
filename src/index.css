@@ -308,31 +308,46 @@ input:focus, select:focus, textarea:focus {
   border-radius: var(--radius);
   overflow: hidden;
 }
+/* antet discret - nu mai domina vizual cursurile de sub el */
 .week-block-label {
-  background: var(--navy-light);
-  color: white;
+  background: var(--accent-soft);
+  color: var(--navy);
   font-size: 12px;
   font-weight: 700;
   padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
 }
 .week-grid-header {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  background: var(--navy);
+  background: #f7f8fb;
 }
 .week-day-header {
-  padding: 10px 8px;
+  padding: 8px 4px;
   text-align: center;
-  color: white;
+  color: var(--navy);
   cursor: pointer;
-  border-left: 1px solid rgba(255,255,255,0.12);
+  border-left: 1px solid var(--border);
+  border-bottom: 2px solid var(--border);
 }
 .week-day-header:first-child { border-left: none; }
-.week-day-header:hover { background: var(--navy-light); }
-.week-day-header-name { font-size: 12px; font-weight: 600; text-transform: capitalize; }
-.week-day-header-date { font-size: 11px; opacity: 0.8; margin-top: 2px; }
-.week-day-header-today { background: var(--accent); }
-.week-day-header-today:hover { background: var(--accent); opacity: 0.9; }
+.week-day-header:hover { background: var(--accent-soft); }
+.week-day-header-name { font-size: 11px; font-weight: 700; text-transform: capitalize; color: var(--text-muted); }
+.week-day-header-date { font-size: 11px; font-weight: 600; margin-top: 2px; }
+.week-day-header-today { background: var(--accent-soft); border-bottom-color: var(--accent); }
+.week-day-header-today:hover { background: var(--accent-soft); }
+
+.week-attr-header {
+  padding: 8px 8px;
+  background: #f7f8fb;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  border-left: 1px solid var(--border);
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+}
 
 .week-grid-empty {
   padding: 24px 20px;
@@ -341,12 +356,14 @@ input:focus, select:focus, textarea:focus {
   font-size: 13px;
 }
 
-.week-grid-body {
+/* container cu scroll orizontal propriu - antetul si randurile de cursuri
+   sunt in ACELASI grid, deci raman aliniate perfect cat timp derulezi */
+.week-grid-scroll { overflow-x: auto; }
+.week-grid-unified {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 2px;
-  padding: 6px;
+  min-width: 900px;
 }
+
 .week-course-bar {
   border-radius: 4px;
   padding: 2px 6px;
@@ -357,6 +374,7 @@ input:focus, select:focus, textarea:focus {
   overflow: hidden;
   cursor: pointer;
   min-width: 0;
+  margin: 1px;
 }
 .week-course-bar:hover { filter: brightness(0.97); }
 .week-course-bar-arrow { font-weight: 700; flex-shrink: 0; opacity: 0.75; }
@@ -364,6 +382,23 @@ input:focus, select:focus, textarea:focus {
 .week-course-bar-time { font-weight: 700; }
 .week-course-bar-name { font-weight: 600; }
 .week-course-bar-extra { opacity: 0.85; }
+
+/* coloanele de atribute din dreapta (tip Excel) - text trunchiat cu "...",
+   tot textul apare la hover (title nativ al browser-ului) */
+.week-attr-cell {
+  padding: 2px 8px;
+  font-size: 11px;
+  color: var(--text);
+  border-left: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.week-attr-cell:hover { background: var(--accent-soft); }
 
 /* ---------- Settings ---------- */
 .settings-page h2 { color: var(--navy); }
@@ -376,4 +411,17 @@ input:focus, select:focus, textarea:focus {
   .month-grid { font-size: 11px; }
   .week-day-header-name { font-size: 10px; }
   .week-day-header-date { font-size: 10px; }
+
+  /* bara de sus a calendarului: butoane mici, care se aseaza pe mai multe
+     randuri, in loc sa iasa de pe ecran */
+  .calendar-toolbar { flex-wrap: wrap; gap: 6px; }
+  .calendar-toolbar button {
+    padding: 6px 10px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .calendar-toolbar h2 { flex-basis: 100%; order: -1; font-size: 15px; margin: 0 0 4px; }
+  .calendar-toolbar .add-course-btn { margin-left: 0; }
+  .view-mode-toggle button { padding: 6px 8px; font-size: 11px; }
 }
+
