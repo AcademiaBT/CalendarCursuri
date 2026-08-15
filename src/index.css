@@ -570,7 +570,7 @@ input:focus, select:focus, textarea:focus {
 .floating-discard-btn { background: rgba(255,255,255,0.2) !important; }
 .floating-discard-btn:hover { background: rgba(255,255,255,0.3) !important; }
 .settings-page { padding-top: 4px; }
-.settings-page-with-floating-bar { padding-top: 60px; }
+.settings-page-with-floating-bar, .admin-page-with-floating-bar { padding-top: 60px; }
 
 @media (max-width: 720px) {
   .course-form { grid-template-columns: 1fr; }

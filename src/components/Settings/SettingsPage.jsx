@@ -21,8 +21,12 @@ export default function SettingsPage() {
   const [customColors, setCustomColors] = useState(profile?.custom_colors || {})
   const [distinctCategories, setDistinctCategories] = useState([])
   const [responsiblePersonsList, setResponsiblePersonsList] = useState([])
-  const [responsibleName, setResponsibleName] = useState(profile?.responsible_name || '')
+  // "responsible_name" nu mai e editabil de aici - se seteaza acum central,
+  // de admin, din Administrare -> Useri (vezi corespondenta user <-> email)
   const [notifyDaysAhead, setNotifyDaysAhead] = useState(profile?.notify_days_ahead ?? 7)
+  // alertele TBD sunt active daca notify_days_ahead nu e null in baza de
+  // date - null inseamna explicit dezactivate de user
+  const [notifyEnabled, setNotifyEnabled] = useState(profile?.notify_days_ahead !== null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [dirty, setDirty] = useState(false)
@@ -40,8 +44,8 @@ export default function SettingsPage() {
     setAttrColumns(profile?.week_attribute_columns || ['interval', 'trainer', 'room', 'responsible'])
     setColorMode(profile?.color_mode || 'duration')
     setCustomColors(profile?.custom_colors || {})
-    setResponsibleName(profile?.responsible_name || '')
     setNotifyDaysAhead(profile?.notify_days_ahead ?? 7)
+    setNotifyEnabled(profile?.notify_days_ahead !== null)
     setError('')
     setSaved(false)
     setDirty(false)
@@ -152,8 +156,7 @@ export default function SettingsPage() {
       week_attribute_columns: attrColumns,
       color_mode: colorMode,
       custom_colors: customColors,
-      responsible_name: responsibleName || null,
-      notify_days_ahead: notifyDaysAhead,
+      notify_days_ahead: notifyEnabled ? notifyDaysAhead : null,
     })
     setSaving(false)
     if (error) setError(error.message)
@@ -185,18 +188,22 @@ export default function SettingsPage() {
           nedecise (TBD), primești un pop-up de atenționare la logare.
         </p>
 
-        <label style={{ display: 'block', marginBottom: 10 }}>
+        <div style={{ marginBottom: 14 }}>
           <div className="admin-hint" style={{ marginBottom: 4 }}>Numele tău din lista "Responsabili"</div>
-          <select
-            value={responsibleName}
-            onChange={(e) => { setResponsibleName(e.target.value); markDirty() }}
-            style={{ minWidth: 220 }}
-          >
-            <option value="">-- fara alerta --</option>
-            {responsiblePersonsList.map((r) => (
-              <option key={r.id} value={r.name}>{r.name}</option>
-            ))}
-          </select>
+          {profile?.responsible_name ? (
+            <strong>{profile.responsible_name}</strong>
+          ) : (
+            <span className="admin-hint">Nesetat — cere unui admin să-l configureze din Administrare → Useri.</span>
+          )}
+        </div>
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <input
+            type="checkbox"
+            checked={!notifyEnabled}
+            onChange={(e) => { setNotifyEnabled(!e.target.checked); markDirty() }}
+          />
+          Dezactivează alertele TBD
         </label>
 
         <label style={{ display: 'block' }}>
@@ -206,6 +213,7 @@ export default function SettingsPage() {
             min="1"
             max="60"
             value={notifyDaysAhead}
+            disabled={!notifyEnabled}
             onChange={(e) => { setNotifyDaysAhead(Number(e.target.value) || 1); markDirty() }}
             style={{ width: 80 }}
           />

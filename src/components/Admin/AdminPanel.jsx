@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../contexts/AuthContext'
+import useNavbarOffset from '../../hooks/useNavbarOffset'
 
 // Nume de coloana acceptate in Excel pentru randul de antet (daca exista) -
 // orice alt text de pe prima coloana e tratat ca fiind chiar o valoare de
@@ -265,13 +266,15 @@ function UsersManager() {
   )
 }
 
-function BackupSettingsPanel() {
+function BackupSettingsPanel({ onDirtyChange }) {
   const [settings, setSettings] = useState(null)
   const [frequency, setFrequency] = useState('weekly')
   const [emails, setEmails] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [dirty, setDirty] = useState(false)
   const [error, setError] = useState('')
+  const { height: navbarHeight } = useNavbarOffset()
 
   async function load() {
     const { data, error } = await supabase.from('backup_settings').select('*').eq('id', 1).single()
@@ -296,8 +299,27 @@ function BackupSettingsPanel() {
     if (error) setError(error.message)
     else {
       setSaved(true)
+      setDirty(false)
+      onDirtyChange?.(false)
       load()
     }
+  }
+
+  function handleDiscard() {
+    if (settings) {
+      setFrequency(settings.frequency)
+      setEmails(settings.recipient_emails || '')
+    }
+    setError('')
+    setSaved(false)
+    setDirty(false)
+    onDirtyChange?.(false)
+  }
+
+  function markDirty() {
+    setSaved(false)
+    setDirty(true)
+    onDirtyChange?.(true)
   }
 
   return (
@@ -313,7 +335,7 @@ function BackupSettingsPanel() {
 
       <label className="settings-checkbox-row" style={{ display: 'block', marginBottom: 10 }}>
         Frecventa
-        <select value={frequency} onChange={(e) => { setFrequency(e.target.value); setSaved(false) }} style={{ marginLeft: 10 }}>
+        <select value={frequency} onChange={(e) => { setFrequency(e.target.value); markDirty() }} style={{ marginLeft: 10 }}>
           <option value="daily">Zilnic</option>
           <option value="weekly">Saptamanal</option>
           <option value="monthly">Lunar</option>
@@ -327,7 +349,7 @@ function BackupSettingsPanel() {
           style={{ width: '100%', maxWidth: 420 }}
           placeholder="ex: costin.muresan@yahoo.com, altcineva@exemplu.com"
           value={emails}
-          onChange={(e) => { setEmails(e.target.value); setSaved(false) }}
+          onChange={(e) => { setEmails(e.target.value); markDirty() }}
         />
       </label>
 
@@ -340,15 +362,30 @@ function BackupSettingsPanel() {
       <div className="modal-actions">
         <div className="spacer" />
         {saved && <span className="auth-info" style={{ marginRight: 10 }}>Salvat</span>}
+        {dirty && (
+          <button className="secondary-btn" onClick={handleDiscard} disabled={saving}>Renunta la modificari</button>
+        )}
         <button onClick={handleSave} disabled={saving}>{saving ? 'Se salveaza...' : 'Salveaza'}</button>
       </div>
+
+      {dirty && (
+        <div className="floating-save-bar" style={{ top: navbarHeight }}>
+          <span>Ai modificari nesalvate</span>
+          <div className="floating-save-bar-actions">
+            <button className="floating-discard-btn" onClick={handleDiscard} disabled={saving}>Renunta la modificari</button>
+            <button onClick={handleSave} disabled={saving}>{saving ? 'Se salveaza...' : 'Salveaza'}</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 export default function AdminPanel() {
+  const [backupDirty, setBackupDirty] = useState(false)
+
   return (
-    <div className="admin-page">
+    <div className={`admin-page ${backupDirty ? 'admin-page-with-floating-bar' : ''}`}>
       <h2>Administrare</h2>
       <p className="admin-hint">
         Aici gestionezi listele care alimenteaza dropdown-urile din formularul de curs.
@@ -364,7 +401,7 @@ export default function AdminPanel() {
       />
       <ListManager title="Responsabili" table="responsible_persons" />
       <UsersManager />
-      <BackupSettingsPanel />
+      <BackupSettingsPanel onDirtyChange={setBackupDirty} />
     </div>
   )
 }

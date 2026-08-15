@@ -24,6 +24,13 @@ export default function TbdAlertModal({ profile, refreshKey, onEditCourse }) {
   const { center: badgeTop } = useNavbarOffset()
 
   useEffect(() => {
+    // userul a dezactivat explicit alertele TBD (Setari) - nu mai interogam
+    // nimic, nici cursurile "ale mele", nici cele generale fara responsabil
+    if (profile && profile.notify_days_ahead === null) {
+      setPendingCourses([])
+      return
+    }
+
     const todayIso = toISODate(new Date())
     const untilIso = toISODate(addDays(new Date(), profile?.notify_days_ahead || 7))
 
