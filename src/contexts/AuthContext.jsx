@@ -15,7 +15,19 @@ export function AuthProvider({ children }) {
       else setLoading(false)
     })
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      // Supabase reinnoieste automat sesiunea (TOKEN_REFRESHED) cand tab-ul
+      // redevine vizibil, chiar daca userul ramane logat - nu e o logare noua.
+      // Daca am trata-o ca atare, am pune loading=true, ceea ce demonteaza
+      // complet <CalendarPage> (App.jsx randeaza doar ecranul de loading cat
+      // timp loading e true) si orice stare locala din ea se pierde - de
+      // exemplu alerta TBD minimizata reapare intreaga. Aici doar actualizam
+      // sesiunea, fara sa atingem loading/profilul.
+      if (event === 'TOKEN_REFRESHED') {
+        setSession(session)
+        return
+      }
+
       setSession(session)
       if (session) {
         // reseteaza "loading", ca ecranul sa astepte profilul nou, nu doar
