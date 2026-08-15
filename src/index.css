@@ -520,6 +520,9 @@ input:focus, select:focus, textarea:focus {
 }
 .floating-save-bar span { font-size: 13px; font-weight: 600; }
 .floating-save-bar button { background: var(--navy); flex-shrink: 0; }
+.floating-save-bar-actions { display: flex; gap: 8px; align-items: center; }
+.floating-discard-btn { background: rgba(255,255,255,0.2) !important; }
+.floating-discard-btn:hover { background: rgba(255,255,255,0.3) !important; }
 .settings-page { padding-top: 4px; }
 .settings-page-with-floating-bar { padding-top: 60px; }
 

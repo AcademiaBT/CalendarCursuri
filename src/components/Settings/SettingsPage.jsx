@@ -33,6 +33,18 @@ export default function SettingsPage() {
     setDirty(true)
   }
 
+  function handleDiscard() {
+    setSelectedFields(profile?.week_bar_fields || ['time'])
+    setAttrColumns(profile?.week_attribute_columns || ['interval', 'trainer', 'room', 'responsible'])
+    setColorMode(profile?.color_mode || 'duration')
+    setCustomColors(profile?.custom_colors || {})
+    setResponsibleName(profile?.responsible_name || '')
+    setNotifyDaysAhead(profile?.notify_days_ahead ?? 7)
+    setError('')
+    setSaved(false)
+    setDirty(false)
+  }
+
   useEffect(() => {
     supabase.from('responsible_persons').select('*').eq('active', true).order('name').then(({ data }) => setResponsiblePersonsList(data || []))
   }, [])
@@ -354,15 +366,21 @@ export default function SettingsPage() {
       <div className="modal-actions">
         <div className="spacer" />
         {saved && <span className="auth-info" style={{ marginRight: 10 }}>Salvat</span>}
+        {dirty && (
+          <button className="secondary-btn" onClick={handleDiscard} disabled={saving}>Renunta la modificari</button>
+        )}
         <button onClick={handleSave} disabled={saving}>{saving ? 'Se salveaza...' : 'Salveaza preferintele'}</button>
       </div>
 
       {dirty && (
         <div className="floating-save-bar">
           <span>Ai modificari nesalvate</span>
-          <button onClick={handleSave} disabled={saving}>
-            {saving ? 'Se salveaza...' : 'Salveaza modificarile'}
-          </button>
+          <div className="floating-save-bar-actions">
+            <button className="floating-discard-btn" onClick={handleDiscard} disabled={saving}>Renunta</button>
+            <button onClick={handleSave} disabled={saving}>
+              {saving ? 'Se salveaza...' : 'Salveaza modificarile'}
+            </button>
+          </div>
         </div>
       )}
     </div>
