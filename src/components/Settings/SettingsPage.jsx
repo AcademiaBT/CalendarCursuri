@@ -3,6 +3,7 @@ import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../contexts/AuthContext'
 import { BAR_FIELD_OPTIONS, ATTRIBUTE_COLUMN_OPTIONS } from '../Calendar/WeekGrid'
 import { DURATION_LEGEND, colorKeyFor, DEFAULT_NEUTRAL_GRAY } from '../../utils/colors'
+import useNavbarOffset from '../../hooks/useNavbarOffset'
 
 const COLOR_MODE_OPTIONS = [
   { value: 'duration', label: 'Durata cursului (implicit)' },
@@ -12,6 +13,7 @@ const COLOR_MODE_OPTIONS = [
 
 export default function SettingsPage() {
   const { profile, updatePreferences } = useAuth()
+  const { height: navbarHeight } = useNavbarOffset()
 
   const [selectedFields, setSelectedFields] = useState(profile?.week_bar_fields || ['time'])
   const [attrColumns, setAttrColumns] = useState(profile?.week_attribute_columns || ['interval', 'trainer', 'room', 'responsible'])
@@ -373,7 +375,7 @@ export default function SettingsPage() {
       </div>
 
       {dirty && (
-        <div className="floating-save-bar">
+        <div className="floating-save-bar" style={{ top: navbarHeight }}>
           <span>Ai modificari nesalvate</span>
           <div className="floating-save-bar-actions">
             <button className="floating-discard-btn" onClick={handleDiscard} disabled={saving}>Renunta la modificari</button>

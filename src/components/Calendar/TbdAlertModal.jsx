@@ -3,6 +3,7 @@ import { format, addDays } from 'date-fns'
 import { ro } from 'date-fns/locale'
 import { supabase } from '../../supabaseClient'
 import { toISODate } from '../../utils/dateHelpers'
+import useNavbarOffset from '../../hooks/useNavbarOffset'
 
 // La logare, atentioneaza userul despre doua categorii de cursuri apropiate:
 // 1) cursurile pentru care userul e "responsabil" (Setari) si care inca au
@@ -17,20 +18,11 @@ export default function TbdAlertModal({ profile, refreshKey, onEditCourse }) {
   const [pendingCourses, setPendingCourses] = useState(null) // null = nu s-a verificat inca
   const [dismissed, setDismissed] = useState(false) // "Am inteles" - ascunde pentru restul sesiunii
   const [minimized, setMinimized] = useState(false)
-  const [badgeTop, setBadgeTop] = useState(72)
-
-  // pozitioneaza badge-ul mereu chiar sub bara de navigare, indiferent de
-  // inaltimea ei reala (variaza pe mobil, cand meniul se rupe pe mai multe
-  // randuri) - recalculat si la redimensionarea ferestrei/rotirea telefonului
-  useEffect(() => {
-    function updateOffset() {
-      const nav = document.querySelector('.navbar')
-      setBadgeTop((nav ? nav.getBoundingClientRect().height : 60) + 12)
-    }
-    updateOffset()
-    window.addEventListener('resize', updateOffset)
-    return () => window.removeEventListener('resize', updateOffset)
-  }, [])
+  const { center: navbarCenter, height: navbarHeight, isMobile } = useNavbarOffset()
+  // desktop: centrat direct pe bara de meniu (sticky), care are loc liber
+  // la mijloc intre linkuri si userul logat; mobil: bara se rupe pe mai
+  // multe randuri, asa ca punem pastila chiar sub ea intreaga, centrata
+  const badgeTop = isMobile ? navbarHeight + 10 : navbarCenter
 
   useEffect(() => {
     const todayIso = toISODate(new Date())
@@ -90,7 +82,14 @@ export default function TbdAlertModal({ profile, refreshKey, onEditCourse }) {
 
   if (minimized) {
     return (
-      <button className="tbd-alert-badge" style={{ top: badgeTop }} onClick={() => setMinimized(false)}>
+      // centrat pe bara de meniu (acum "sticky", mereu vizibila) - nu mai
+      // sta peste continutul paginii, unde putea acoperi butoane sau alte
+      // elemente ale ecranului curent
+      <button
+        className={`tbd-alert-badge ${isMobile ? 'tbd-alert-badge-below' : ''}`}
+        style={{ top: badgeTop }}
+        onClick={() => setMinimized(false)}
+      >
         ⚠️ {pendingCourses.length} {pendingCourses.length === 1 ? 'curs neclarificat' : 'cursuri neclarificate'}
       </button>
     )
