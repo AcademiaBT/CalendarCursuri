@@ -109,15 +109,27 @@ export default function CalendarPage() {
   }
 
   // valorile distincte prezente printre cursurile afisate acum, folosite ca
-  // sa desenam legenda cu adevarat (nu doar text) pentru Responsabil/Categorie
+  // sa desenam legenda cu adevarat (nu doar text) pentru Responsabil/Categorie.
+  // "TBD" (responsabil neclarificat) nu e o valoare reala de legenda - vezi
+  // hasUnclarified mai jos, care semnaleaza separat cazul acesta.
   const legendValues = useMemo(() => {
     if (colorPrefs.colorMode === 'responsible') {
-      return [...new Set(courses.map((c) => c.responsible).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ro'))
+      return [...new Set(courses.map((c) => c.responsible).filter((r) => r && r !== 'TBD'))].sort((a, b) => a.localeCompare(b, 'ro'))
     }
     if (colorPrefs.colorMode === 'category') {
       return [...new Set(courses.map((c) => c.course_area).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ro'))
     }
     return []
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courses, colorPrefs.colorMode])
+
+  // true daca exista cursuri fara valoare pentru criteriul ales (responsabil
+  // TBD, sau categorie necompletata) - acestea se coloreaza dupa durata, cu
+  // bordura punctata (vezi getBarStyle) - legenda explica separat conventia
+  const hasUnclarified = useMemo(() => {
+    if (colorPrefs.colorMode === 'responsible') return courses.some((c) => !c.responsible || c.responsible === 'TBD')
+    if (colorPrefs.colorMode === 'category') return courses.some((c) => !c.course_area)
+    return false
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courses, colorPrefs.colorMode])
 
@@ -259,21 +271,28 @@ export default function CalendarPage() {
               {l.label}
             </span>
           ))
-        ) : legendValues.length > 0 ? (
-          legendValues.map((value) => {
-            const hex = colorPrefs.customColors[colorKeyFor(colorPrefs.colorMode, value)] || DEFAULT_NEUTRAL_GRAY
-            const style = styleFromHex(hex)
-            return (
-              <span key={value} className="legend-item">
-                <span className="legend-swatch" style={{ background: style.bg, borderColor: style.border }} />
-                {value}
-              </span>
-            )
-          })
         ) : (
-          <span className="legend-item legend-note">
-            Niciun curs cu {colorPrefs.colorMode === 'responsible' ? 'responsabil' : 'categorie'} completat/a momentan.
-          </span>
+          <>
+            {legendValues.map((value) => {
+              const hex = colorPrefs.customColors[colorKeyFor(colorPrefs.colorMode, value)] || DEFAULT_NEUTRAL_GRAY
+              const style = styleFromHex(hex)
+              return (
+                <span key={value} className="legend-item">
+                  <span className="legend-swatch" style={{ background: style.bg, borderColor: style.border }} />
+                  {value}
+                </span>
+              )
+            })}
+            {hasUnclarified && (
+              <span className="legend-item" title="Fundal gri neutru, cu eticheta TBD in rosu, direct pe bara">
+                <span className="legend-swatch" style={{ background: '#8a94a630', borderColor: '#8a94a6' }} />
+                Neclarificat — <span className="unclarified-badge">TBD</span>
+              </span>
+            )}
+            {legendValues.length === 0 && !hasUnclarified && (
+              <span className="legend-item legend-note">Niciun curs momentan.</span>
+            )}
+          </>
         )}
       </div>
 
@@ -377,6 +396,7 @@ export default function CalendarPage() {
                   >
                     <div className="day-detail-item-title">
                       <strong>{c.start_time?.slice(0, 5) || ''}</strong> {c.name}
+                      {style.unclarified && <span className="unclarified-badge">TBD</span>}
                     </div>
                     <div className="day-detail-item-sub">
                       {c.trainer || '—'} · {c.room || '—'}

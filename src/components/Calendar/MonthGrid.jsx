@@ -49,6 +49,7 @@ export default function MonthGrid({ grid, courses, colorPrefs, hoveredCourseId, 
                   >
                     <span className="course-chip-time">{c.start_time?.slice(0, 5) || ''}</span>
                     <span className="course-chip-name">{c.name}</span>
+                    {style.unclarified && <span className="unclarified-badge">TBD</span>}
                   </div>
                 )
               })}

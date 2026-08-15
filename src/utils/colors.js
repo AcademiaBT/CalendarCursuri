@@ -62,22 +62,33 @@ export function colorKeyFor(mode, value) {
 // Functia unica folosita de calendar (lunar + saptamanal) pentru stilul unui
 // curs: alege modul (durata / responsabil / categorie) si aplica orice
 // culoare personalizata gasita, cu fallback sensibil daca nu exista una.
+//
+// Regula UNITARA pentru toate trei criteriile: cand valoarea aleasa lipseste
+// sau e "TBD" (responsabil neclarificat inca), cursul primeste fundal gri
+// neutru si flag-ul "unclarified" - componentele de randare (MonthGrid,
+// WeekGrid, day-detail-list) afiseaza atunci un text "TBD" in rosu, direct
+// pe bara, ca semnal clar "inca de clarificat".
 export function getBarStyle(course, prefs = {}) {
   const { colorMode = 'duration', customColors = {} } = prefs
 
-  if (colorMode === 'responsible' && course.responsible) {
-    const key = colorKeyFor('responsible', course.responsible)
-    return styleFromHex(customColors[key] || DEFAULT_NEUTRAL_GRAY)
+  if (colorMode === 'responsible') {
+    if (course.responsible && course.responsible !== 'TBD') {
+      const key = colorKeyFor('responsible', course.responsible)
+      return { ...styleFromHex(customColors[key] || DEFAULT_NEUTRAL_GRAY), unclarified: false }
+    }
+    return { ...styleFromHex(DEFAULT_NEUTRAL_GRAY), unclarified: true }
   }
 
-  if (colorMode === 'category' && course.course_area) {
-    const key = colorKeyFor('category', course.course_area)
-    return styleFromHex(customColors[key] || DEFAULT_NEUTRAL_GRAY)
+  if (colorMode === 'category') {
+    if (course.course_area) {
+      const key = colorKeyFor('category', course.course_area)
+      return { ...styleFromHex(customColors[key] || DEFAULT_NEUTRAL_GRAY), unclarified: false }
+    }
+    return { ...styleFromHex(DEFAULT_NEUTRAL_GRAY), unclarified: true }
   }
 
-  // implicit (sau fallback daca lipseste responsabilul/categoria pe acest curs): dupa durata
   const bucket = getDurationStyle(course.start_date, course.end_date)
   const durationKey = colorKeyFor('duration', bucket.key)
-  const customHex = customColors[durationKey]
-  return customHex ? styleFromHex(customHex) : bucket
+  const customDurationHex = customColors[durationKey]
+  return { ...(customDurationHex ? styleFromHex(customDurationHex) : bucket), unclarified: false }
 }

@@ -124,6 +124,7 @@ function CourseBar({ course, weekDays, barFields, colorPrefs, rowIndex, hoveredC
         <span className="week-course-bar-name">{course.name}</span>
         {extraFieldsText && <span className="week-course-bar-extra"> — {extraFieldsText}</span>}
       </span>
+      {style.unclarified && <span className="unclarified-badge">TBD</span>}
       {continuesToNext && <span className="week-course-bar-arrow" title="Continua saptamana urmatoare">▶</span>}
     </div>
   )
