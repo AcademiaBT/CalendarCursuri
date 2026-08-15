@@ -204,13 +204,11 @@ export default function CalendarPage() {
         </button>
       </div>
 
-      {profile?.responsible_name && (
-        <TbdAlertModal
-          profile={profile}
-          refreshKey={tbdRefreshKey}
-          onEditCourse={(course) => setModalState({ course })}
-        />
-      )}
+      <TbdAlertModal
+        profile={profile}
+        refreshKey={tbdRefreshKey}
+        onEditCourse={(course) => setModalState({ course })}
+      />
 
       <div className="legend">
         {colorPrefs.colorMode === 'duration' ? (

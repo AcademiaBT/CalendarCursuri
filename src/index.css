@@ -270,7 +270,6 @@ input:focus, select:focus, textarea:focus {
    din vedere ca mai are de rezolvat, in timp ce editeaza cursurile pe rand */
 .tbd-alert-badge {
   position: fixed;
-  top: 16px;
   right: 16px;
   z-index: 150;
   background: #fff3cd;
@@ -283,6 +282,7 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 6px 18px rgba(0,0,0,0.18);
   cursor: pointer;
   animation: tbd-badge-in 0.25s ease;
+  max-width: calc(100vw - 32px);
 }
 .tbd-alert-badge:hover { filter: brightness(0.97); }
 @keyframes tbd-badge-in {
@@ -587,5 +587,9 @@ input:focus, select:focus, textarea:focus {
   .floating-save-bar > span { display: none; }
   .floating-save-bar-actions { width: 100%; justify-content: stretch; }
   .floating-save-bar-actions button { flex: 1; font-size: 12px; padding: 8px 6px; }
+
+  /* alerta TBD minimizata: pe mobil, mai mica si mai aproape de margine,
+     ca sa nu acopere continutul util */
+  .tbd-alert-badge { right: 8px; font-size: 12px; padding: 8px 12px; }
 }
 

@@ -19,8 +19,9 @@ const FORM_FIELDS = [
   'responsible', 'invite_mail', 'catering', 'notes', 'course_area', 'target_audience',
 ]
 
-// trainer/sala/tip curs sunt obligatorii; cursurile mai vechi, salvate inainte
-// de aceasta regula, pot avea valoarea goala - le tratam ca "TBD" la afisare
+// trainer/sala/tip curs/responsabil sunt obligatorii; cursurile mai vechi,
+// salvate inainte de aceasta regula, pot avea valoarea goala - le tratam ca
+// "TBD" la afisare
 function pickFormFields(source) {
   const result = {}
   for (const key of FORM_FIELDS) {
@@ -29,6 +30,7 @@ function pickFormFields(source) {
   if (!result.trainer) result.trainer = 'TBD'
   if (!result.room) result.room = 'TBD'
   if (!result.course_type) result.course_type = 'TBD'
+  if (!result.responsible) result.responsible = 'TBD'
   return result
 }
 
@@ -43,7 +45,7 @@ const emptyForm = (startDate) => ({
   room: 'TBD',
   participants_group: '',
   participants_count: '',
-  responsible: '',
+  responsible: 'TBD',
   invite_mail: '',
   catering: '',
   notes: '',
@@ -84,19 +86,7 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
 
   const trainerOptions = optionsFor(trainers, form.trainer)
   const roomOptions = optionsFor(rooms, form.room)
-
-  // "Responsabil" ramane optional (nu are TBD, spre deosebire de trainer/sala),
-  // dar pastreaza acelasi mecanism de siguranta pentru valori vechi (nume care
-  // nu mai sunt in lista activa raman totusi vizibile la editare).
-  function responsibleOptionsFor(list, currentValue) {
-    const visible = list.filter((item) => item.active || item.name === currentValue)
-    const stillMissing = currentValue && !list.some((item) => item.name === currentValue)
-    if (stillMissing) {
-      visible.unshift({ id: `deleted-${currentValue}`, name: currentValue, active: false, deleted: true })
-    }
-    return visible
-  }
-  const responsibleOptions = responsibleOptionsFor(responsiblePersons, form.responsible)
+  const responsibleOptions = optionsFor(responsiblePersons, form.responsible)
 
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }))
@@ -276,9 +266,8 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
           </label>
 
           <label>
-            Responsabil
-            <select disabled={!canEdit} value={form.responsible || ''} onChange={(e) => update('responsible', e.target.value)}>
-              <option value="">-- alege responsabil --</option>
+            Responsabil *
+            <select required disabled={!canEdit} value={form.responsible || 'TBD'} onChange={(e) => update('responsible', e.target.value)}>
               {responsibleOptions.map((r) => (
                 <option key={r.id} value={r.name}>
                   {r.name}{!r.active ? (r.deleted ? ' (sters din lista)' : ' (inactiv)') : ''}
