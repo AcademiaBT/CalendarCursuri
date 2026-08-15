@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { supabase } from '../../supabaseClient'
+import { useAuth } from '../../contexts/AuthContext'
 
 // Nume de coloana acceptate in Excel pentru randul de antet (daca exista) -
 // orice alt text de pe prima coloana e tratat ca fiind chiar o valoare de
@@ -171,6 +172,117 @@ function ListManager({ title, table, extraColumns = [], importHint }) {
   )
 }
 
+// Listeaza toti userii inregistrati (tabelul "profiles", creat automat de
+// Supabase la fiecare cont nou) si lasa adminul sa editeze central, pentru
+// fiecare: numele afisat (in loc de email brut), rolul, si mai ales
+// corespondenta cu lista "Responsabili" - ce nume din acea lista apartine
+// userului respectiv (folosita pentru alerta TBD personalizata). Userii nu
+// se pot crea de aici - raman creati manual din Supabase (fara inregistrare
+// din aplicatie), asa cum e stabilit deja.
+function UsersManager() {
+  const { user: currentUser } = useAuth()
+  const [items, setItems] = useState([])
+  const [responsibleOptions, setResponsibleOptions] = useState([])
+  const [drafts, setDrafts] = useState({}) // id -> display_name in curs de editare (inainte de blur)
+  const [error, setError] = useState('')
+
+  async function load() {
+    const { data, error } = await supabase.from('profiles').select('*').order('email')
+    if (error) setError(error.message)
+    else {
+      setItems(data || [])
+      setDrafts(Object.fromEntries((data || []).map((p) => [p.id, p.display_name || ''])))
+    }
+  }
+
+  useEffect(() => {
+    load()
+    supabase
+      .from('responsible_persons')
+      .select('*')
+      .eq('active', true)
+      .order('name')
+      .then(({ data }) => setResponsibleOptions(data || []))
+  }, [])
+
+  async function saveField(id, field, value) {
+    setError('')
+    const { error } = await supabase.from('profiles').update({ [field]: value }).eq('id', id)
+    if (error) setError(error.message)
+    else load()
+  }
+
+  function saveDisplayNameIfChanged(item) {
+    const draft = (drafts[item.id] ?? '').trim()
+    if (draft !== (item.display_name || '')) saveField(item.id, 'display_name', draft || null)
+  }
+
+  function handleRoleChange(item, newRole) {
+    if (item.id === currentUser?.id && newRole !== 'admin') {
+      if (!confirm('Iti retragi singur rolul de admin. Nu vei mai putea reveni aici fara ajutorul altui admin. Esti sigur?')) return
+    }
+    saveField(item.id, 'role', newRole)
+  }
+
+  return (
+    <div className="admin-section">
+      <h3>Useri</h3>
+      <p className="admin-hint">
+        Userii se creeaza in continuare manual, din Supabase (fara inregistrare din
+        aplicatie) - aici doar editezi cum apar in aplicatie: numele afisat (in loc de
+        email), rolul, si care e numele lor din lista "Responsabili" de mai jos, folosit
+        pentru alerta TBD personalizata.
+      </p>
+      {error && <div className="auth-error">{error}</div>}
+
+      <table className="admin-table">
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Nume afisat</th>
+            <th>Rol</th>
+            <th>Responsabil corespunzator</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item) => (
+            <tr key={item.id}>
+              <td>{item.email}</td>
+              <td>
+                <input
+                  value={drafts[item.id] ?? ''}
+                  placeholder="ex: Pustiu"
+                  onChange={(e) => setDrafts((d) => ({ ...d, [item.id]: e.target.value }))}
+                  onBlur={() => saveDisplayNameIfChanged(item)}
+                  style={{ minWidth: 140 }}
+                />
+              </td>
+              <td>
+                <select value={item.role} onChange={(e) => handleRoleChange(item, e.target.value)}>
+                  <option value="user">user</option>
+                  <option value="admin">admin</option>
+                </select>
+              </td>
+              <td>
+                <select
+                  value={item.responsible_name || ''}
+                  onChange={(e) => saveField(item.id, 'responsible_name', e.target.value || null)}
+                  style={{ minWidth: 160 }}
+                >
+                  <option value="">-- niciunul --</option>
+                  {responsibleOptions.map((r) => (
+                    <option key={r.id} value={r.name}>{r.name}</option>
+                  ))}
+                </select>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 function BackupSettingsPanel() {
   const [settings, setSettings] = useState(null)
   const [frequency, setFrequency] = useState('weekly')
@@ -269,6 +381,7 @@ export default function AdminPanel() {
         importHint="Fisier cu doua coloane: nume sala, capacitate (optional)."
       />
       <ListManager title="Responsabili" table="responsible_persons" />
+      <UsersManager />
       <BackupSettingsPanel />
     </div>
   )

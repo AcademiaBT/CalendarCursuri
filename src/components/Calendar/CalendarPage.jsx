@@ -14,6 +14,7 @@ import CourseModal from './CourseModal'
 import MonthGrid from './MonthGrid'
 import WeekGrid, { DEFAULT_DAYS_BLOCK_WIDTH, DEFAULT_ATTR_COL_WIDTH, DEFAULT_ROW_HEIGHT } from './WeekGrid'
 import TbdAlertModal from './TbdAlertModal'
+import { suppressNextGhostClick } from '../../utils/dragHelpers'
 
 // Cate saptamani afisam stivuite, unele sub altele, in vizualizarea
 // saptamanala - "Saptamana anterioara/urmatoare" muta toata fereastra cu o
@@ -56,14 +57,19 @@ export default function CalendarPage() {
     e.preventDefault()
     const startY = e.clientY
     const startHeight = rowHeight || DEFAULT_ROW_HEIGHT
+    let moved = false
 
     function onPointerMove(moveEvent) {
+      moved = true
       const dy = moveEvent.clientY - startY
       setRowHeight(Math.min(72, Math.max(16, startHeight + dy)))
     }
     function onPointerUp() {
       window.removeEventListener('pointermove', onPointerMove)
       window.removeEventListener('pointerup', onPointerUp)
+      // vezi comentariul din dragHelpers.js - fara asta, daca dai drumul la
+      // mouse peste o bara de curs, se deschidea accidental editarea ei
+      if (moved) suppressNextGhostClick()
     }
     window.addEventListener('pointermove', onPointerMove)
     window.addEventListener('pointerup', onPointerUp)

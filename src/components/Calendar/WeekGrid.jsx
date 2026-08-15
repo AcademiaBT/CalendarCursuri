@@ -3,6 +3,7 @@ import { format, isToday as checkIsToday } from 'date-fns'
 import { ro } from 'date-fns/locale'
 import { toISODate, formatWeekRangeTitle } from '../../utils/dateHelpers'
 import { getBarStyle, courseDurationDays } from '../../utils/colors'
+import { suppressNextGhostClick } from '../../utils/dragHelpers'
 
 // Gaseste in ce coloane (0-6, Luni-Duminica) ar trebui desenata bara unui
 // curs in aceasta saptamana, "taiata" la marginile saptamanii daca cursul
@@ -74,13 +75,16 @@ function startColumnResize(e, onDrag) {
   e.preventDefault()
   e.stopPropagation()
   const startX = e.clientX
+  let moved = false
 
   function onPointerMove(moveEvent) {
+    moved = true
     onDrag(moveEvent.clientX - startX)
   }
   function onPointerUp() {
     window.removeEventListener('pointermove', onPointerMove)
     window.removeEventListener('pointerup', onPointerUp)
+    if (moved) suppressNextGhostClick()
   }
   window.addEventListener('pointermove', onPointerMove)
   window.addEventListener('pointerup', onPointerUp)

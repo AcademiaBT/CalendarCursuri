@@ -21,6 +21,7 @@ export default function SettingsPage() {
   const [customColors, setCustomColors] = useState(profile?.custom_colors || {})
   const [distinctCategories, setDistinctCategories] = useState([])
   const [responsiblePersonsList, setResponsiblePersonsList] = useState([])
+  const [displayName, setDisplayName] = useState(profile?.display_name || '')
   const [responsibleName, setResponsibleName] = useState(profile?.responsible_name || '')
   const [notifyDaysAhead, setNotifyDaysAhead] = useState(profile?.notify_days_ahead ?? 7)
   const [saving, setSaving] = useState(false)
@@ -40,6 +41,7 @@ export default function SettingsPage() {
     setAttrColumns(profile?.week_attribute_columns || ['interval', 'trainer', 'room', 'responsible'])
     setColorMode(profile?.color_mode || 'duration')
     setCustomColors(profile?.custom_colors || {})
+    setDisplayName(profile?.display_name || '')
     setResponsibleName(profile?.responsible_name || '')
     setNotifyDaysAhead(profile?.notify_days_ahead ?? 7)
     setError('')
@@ -152,6 +154,7 @@ export default function SettingsPage() {
       week_attribute_columns: attrColumns,
       color_mode: colorMode,
       custom_colors: customColors,
+      display_name: displayName.trim() || null,
       responsible_name: responsibleName || null,
       notify_days_ahead: notifyDaysAhead,
     })
@@ -177,6 +180,21 @@ export default function SettingsPage() {
         Preferintele de mai jos sunt personale — se salveaza in contul tau si te urmaresc pe orice
         dispozitiv de pe care te loghezi.
       </p>
+
+      <div className="admin-section">
+        <h3>Profil</h3>
+        <label style={{ display: 'block' }}>
+          <div className="admin-hint" style={{ marginBottom: 4 }}>
+            Nume afisat (in loc de email, in bara de meniu si oriunde apari listat)
+          </div>
+          <input
+            value={displayName}
+            placeholder="ex: Pustiu"
+            onChange={(e) => { setDisplayName(e.target.value); markDirty() }}
+            style={{ minWidth: 220 }}
+          />
+        </label>
+      </div>
 
       <div className="admin-section">
         <h3>Alertă cursuri neclarificate (TBD)</h3>
