@@ -63,6 +63,7 @@ export const DEFAULT_ATTRIBUTE_COLUMNS = ['interval', 'trainer', 'room', 'respon
 export const DAY_COLS = 7
 export const DEFAULT_DAYS_BLOCK_WIDTH = 42 * DAY_COLS
 export const DEFAULT_ATTR_COL_WIDTH = 100
+export const DEFAULT_ROW_HEIGHT = 22
 const MIN_DAYS_BLOCK_WIDTH = 24 * DAY_COLS
 const MIN_ATTR_COL_WIDTH = 50
 
@@ -131,7 +132,7 @@ function CourseBar({ course, weekDays, barFields, colorPrefs, rowIndex, hoveredC
 // continua - latimile sunt comune tuturor blocurilor (redimensionezi o
 // data, se aplica peste tot).
 export default function WeekGrid({
-  weekDays, courses, barFields, colorPrefs, attrColumns, hoveredCourseId,
+  weekDays, courses, barFields, colorPrefs, attrColumns, hoveredCourseId, rowHeight,
   daysBlockWidth, attrColWidths, onDaysBlockWidthChange, onAttrColWidthChange,
   onDayHeaderClick, onCourseClick, onCourseHover, onCourseLeave,
 }) {
@@ -198,7 +199,7 @@ export default function WeekGrid({
             className="week-grid-unified"
             style={{
               gridTemplateColumns,
-              gridTemplateRows: `auto repeat(${weekCourses.length}, minmax(22px, auto))`,
+              gridTemplateRows: `auto repeat(${weekCourses.length}, minmax(${rowHeight || DEFAULT_ROW_HEIGHT}px, auto))`,
             }}
           >
             {weekDays.map((date, i) => (
@@ -214,6 +215,7 @@ export default function WeekGrid({
                   <span
                     className="col-resize-handle col-resize-handle-block"
                     onPointerDown={handleBlockDividerDrag}
+                    onClick={(e) => e.stopPropagation()}
                     title="Trage pentru a redimensiona proportional zilele vs. detaliile"
                   />
                 )}
@@ -226,6 +228,7 @@ export default function WeekGrid({
                 <span
                   className="col-resize-handle"
                   onPointerDown={(e) => handleAttrColumnDrag(e, col.key)}
+                  onClick={(e) => e.stopPropagation()}
                   title="Trage pentru a redimensiona aceasta coloana"
                 />
               </div>

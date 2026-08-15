@@ -19,6 +19,9 @@ export default function SettingsPage() {
   const [customColors, setCustomColors] = useState(profile?.custom_colors || {})
   const [distinctResponsible, setDistinctResponsible] = useState([])
   const [distinctCategories, setDistinctCategories] = useState([])
+  const [responsiblePersonsList, setResponsiblePersonsList] = useState([])
+  const [responsibleName, setResponsibleName] = useState(profile?.responsible_name || '')
+  const [notifyDaysAhead, setNotifyDaysAhead] = useState(profile?.notify_days_ahead ?? 7)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [dirty, setDirty] = useState(false)
@@ -30,6 +33,10 @@ export default function SettingsPage() {
     setSaved(false)
     setDirty(true)
   }
+
+  useEffect(() => {
+    supabase.from('responsible_persons').select('*').eq('active', true).order('name').then(({ data }) => setResponsiblePersonsList(data || []))
+  }, [])
 
   useEffect(() => {
     supabase
@@ -135,6 +142,8 @@ export default function SettingsPage() {
       week_attribute_columns: attrColumns,
       color_mode: colorMode,
       custom_colors: customColors,
+      responsible_name: responsibleName || null,
+      notify_days_ahead: notifyDaysAhead,
     })
     setSaving(false)
     if (error) setError(error.message)
@@ -158,6 +167,40 @@ export default function SettingsPage() {
         Preferintele de mai jos sunt personale — se salveaza in contul tau si te urmaresc pe orice
         dispozitiv de pe care te loghezi.
       </p>
+
+      <div className="admin-section">
+        <h3>Alertă cursuri neclarificate (TBD)</h3>
+        <p className="admin-hint">
+          Dacă ești responsabil pentru cursuri care încep în curând și încă au trainer sau sală
+          nedecise (TBD), primești un pop-up de atenționare la logare.
+        </p>
+
+        <label style={{ display: 'block', marginBottom: 10 }}>
+          <div className="admin-hint" style={{ marginBottom: 4 }}>Numele tău din lista "Responsabili"</div>
+          <select
+            value={responsibleName}
+            onChange={(e) => { setResponsibleName(e.target.value); markDirty() }}
+            style={{ minWidth: 220 }}
+          >
+            <option value="">-- fara alerta --</option>
+            {responsiblePersonsList.map((r) => (
+              <option key={r.id} value={r.name}>{r.name}</option>
+            ))}
+          </select>
+        </label>
+
+        <label style={{ display: 'block' }}>
+          <div className="admin-hint" style={{ marginBottom: 4 }}>Alertează cu câte zile înainte de începerea cursului</div>
+          <input
+            type="number"
+            min="1"
+            max="60"
+            value={notifyDaysAhead}
+            onChange={(e) => { setNotifyDaysAhead(Number(e.target.value) || 1); markDirty() }}
+            style={{ width: 80 }}
+          />
+        </label>
+      </div>
 
       <div className="admin-section">
         <h3>Campuri pe bara Gantt (vizualizare saptamanala)</h3>

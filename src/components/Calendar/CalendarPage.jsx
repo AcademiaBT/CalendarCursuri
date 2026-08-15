@@ -12,7 +12,8 @@ import { getBarStyle, DURATION_LEGEND } from '../../utils/colors'
 import { useAuth } from '../../contexts/AuthContext'
 import CourseModal from './CourseModal'
 import MonthGrid from './MonthGrid'
-import WeekGrid, { DEFAULT_DAYS_BLOCK_WIDTH, DEFAULT_ATTR_COL_WIDTH } from './WeekGrid'
+import WeekGrid, { DEFAULT_DAYS_BLOCK_WIDTH, DEFAULT_ATTR_COL_WIDTH, DEFAULT_ROW_HEIGHT } from './WeekGrid'
+import TbdAlertModal from './TbdAlertModal'
 
 // Cate saptamani afisam stivuite, unele sub altele, in vizualizarea
 // saptamanala - "Saptamana anterioara/urmatoare" muta toata fereastra cu o
@@ -36,10 +37,34 @@ export default function CalendarPage() {
   // salveaza automat, la scurt timp dupa ce te opresti din tras un maner.
   const [daysBlockWidth, setDaysBlockWidth] = useState(profile?.week_days_block_width || DEFAULT_DAYS_BLOCK_WIDTH)
   const [attrColWidths, setAttrColWidths] = useState(profile?.week_attr_col_widths || {})
+  const [rowHeight, setRowHeight] = useState(profile?.week_row_height || DEFAULT_ROW_HEIGHT)
   const widthsMounted = useRef(false)
 
   function handleAttrColWidthChange(key, width) {
     setAttrColWidths((prev) => ({ ...prev, [key]: width }))
+  }
+
+  function adjustRowHeight(delta) {
+    setRowHeight((prev) => Math.min(72, Math.max(16, (prev || DEFAULT_ROW_HEIGHT) + delta)))
+  }
+
+  // Redimensionare inaltime randuri prin tragere verticala - acelasi
+  // mecanism (Pointer Events) ca la coloanele redimensionabile.
+  function handleRowHeightDrag(e) {
+    e.preventDefault()
+    const startY = e.clientY
+    const startHeight = rowHeight || DEFAULT_ROW_HEIGHT
+
+    function onPointerMove(moveEvent) {
+      const dy = moveEvent.clientY - startY
+      setRowHeight(Math.min(72, Math.max(16, startHeight + dy)))
+    }
+    function onPointerUp() {
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('pointerup', onPointerUp)
+    }
+    window.addEventListener('pointermove', onPointerMove)
+    window.addEventListener('pointerup', onPointerUp)
   }
 
   useEffect(() => {
@@ -53,10 +78,11 @@ export default function CalendarPage() {
       updatePreferences({
         week_days_block_width: Math.round(daysBlockWidth),
         week_attr_col_widths: attrColWidths,
+        week_row_height: Math.round(rowHeight),
       })
     }, 800)
     return () => clearTimeout(timeout)
-  }, [daysBlockWidth, attrColWidths])
+  }, [daysBlockWidth, attrColWidths, rowHeight])
 
   // Preferintele de afisare vin din profilul Supabase al userului (aceleasi
   // pe orice dispozitiv), cu valori implicite rezonabile daca nu s-au
@@ -149,10 +175,28 @@ export default function CalendarPage() {
           </button>
         </div>
 
+        {viewMode === 'week' && (
+          <div className="row-height-control" title="Inaltimea randurilor: overview (mic) vs. detalii (mare)">
+            <span className="row-height-label">Randuri</span>
+            <button className="reorder-btn" onClick={() => adjustRowHeight(-6)} disabled={rowHeight <= 16}>−</button>
+            <span
+              className="row-height-drag-handle"
+              onPointerDown={handleRowHeightDrag}
+              onClick={(e) => e.stopPropagation()}
+              title="Trage in sus/jos pentru a ajusta inaltimea randurilor"
+            >
+              ⠿
+            </span>
+            <button className="reorder-btn" onClick={() => adjustRowHeight(6)} disabled={rowHeight >= 72}>+</button>
+          </div>
+        )}
+
         <button className="add-course-btn" onClick={() => setModalState({ initialDate: new Date() })}>
           + Adauga curs
         </button>
       </div>
+
+      {profile?.responsible_name && <TbdAlertModal profile={profile} />}
 
       <div className="legend">
         {colorPrefs.colorMode === 'duration' ? (
@@ -196,6 +240,7 @@ export default function CalendarPage() {
               hoveredCourseId={hoveredCourseId}
               daysBlockWidth={daysBlockWidth}
               attrColWidths={attrColWidths}
+              rowHeight={rowHeight}
               onDaysBlockWidthChange={setDaysBlockWidth}
               onAttrColWidthChange={handleAttrColWidthChange}
               onDayHeaderClick={(date) => setModalState({ initialDate: date })}
