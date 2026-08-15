@@ -159,7 +159,8 @@ export default function WeekGrid({
       if (a.start_date !== b.start_date) return a.start_date.localeCompare(b.start_date)
       const ta = a.start_time || '00:00'
       const tb = b.start_time || '00:00'
-      return ta.localeCompare(tb)
+      if (ta !== tb) return ta.localeCompare(tb)
+      return (a.name || '').localeCompare(b.name || '', 'ro')
     })
 
   function handleBlockDividerDrag(e) {

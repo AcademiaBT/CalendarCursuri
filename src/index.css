@@ -552,5 +552,12 @@ input:focus, select:focus, textarea:focus {
   .calendar-toolbar h2 { flex-basis: 100%; order: -1; font-size: 15px; margin: 0 0 4px; }
   .calendar-toolbar .add-course-btn { margin-left: 0; }
   .view-mode-toggle button { padding: 6px 8px; font-size: 11px; }
+
+  /* bara flotanta "modificari nesalvate": pe ecran ingust, textul dispare
+     si butoanele ocupa tot latimea, stivuite, ca sa incapa fara scroll */
+  .floating-save-bar { flex-wrap: wrap; padding: 10px 14px; gap: 8px; }
+  .floating-save-bar > span { display: none; }
+  .floating-save-bar-actions { width: 100%; justify-content: stretch; }
+  .floating-save-bar-actions button { flex: 1; font-size: 12px; padding: 8px 6px; }
 }
 

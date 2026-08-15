@@ -50,7 +50,8 @@ export function toISODate(date) {
   return format(date, 'yyyy-MM-dd')
 }
 
-// cursurile care ating ziua respectiva (start_date <= zi <= end_date), sortate dupa ora de start
+// cursurile care ating ziua respectiva (start_date <= zi <= end_date),
+// sortate dupa ora de start, iar la ore egale, alfabetic dupa denumire
 export function coursesForDay(courses, date) {
   const iso = toISODate(date)
   return courses
@@ -58,7 +59,8 @@ export function coursesForDay(courses, date) {
     .sort((a, b) => {
       const ta = a.start_time || '00:00'
       const tb = b.start_time || '00:00'
-      return ta.localeCompare(tb)
+      if (ta !== tb) return ta.localeCompare(tb)
+      return (a.name || '').localeCompare(b.name || '', 'ro')
     })
 }
 

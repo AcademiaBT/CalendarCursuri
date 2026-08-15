@@ -17,8 +17,13 @@ export function AuthProvider({ children }) {
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
-      if (session) loadProfile(session.user.id)
-      else {
+      if (session) {
+        // reseteaza "loading", ca ecranul sa astepte profilul nou, nu doar
+        // sesiunea - altfel pagina se poate afisa o clipa cu profilul vechi
+        // (sau gol), inainte sa soseasca cel corect de la Supabase
+        setLoading(true)
+        loadProfile(session.user.id)
+      } else {
         setProfile(null)
         setLoading(false)
       }

@@ -369,14 +369,14 @@ export default function SettingsPage() {
         {dirty && (
           <button className="secondary-btn" onClick={handleDiscard} disabled={saving}>Renunta la modificari</button>
         )}
-        <button onClick={handleSave} disabled={saving}>{saving ? 'Se salveaza...' : 'Salveaza preferintele'}</button>
+        <button onClick={handleSave} disabled={saving}>{saving ? 'Se salveaza...' : 'Salveaza modificarile'}</button>
       </div>
 
       {dirty && (
         <div className="floating-save-bar">
           <span>Ai modificari nesalvate</span>
           <div className="floating-save-bar-actions">
-            <button className="floating-discard-btn" onClick={handleDiscard} disabled={saving}>Renunta</button>
+            <button className="floating-discard-btn" onClick={handleDiscard} disabled={saving}>Renunta la modificari</button>
             <button onClick={handleSave} disabled={saving}>
               {saving ? 'Se salveaza...' : 'Salveaza modificarile'}
             </button>
