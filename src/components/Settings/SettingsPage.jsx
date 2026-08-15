@@ -4,6 +4,9 @@ import { useAuth } from '../../contexts/AuthContext'
 import { BAR_FIELD_OPTIONS, ATTRIBUTE_COLUMN_OPTIONS } from '../Calendar/WeekGrid'
 import { DURATION_LEGEND, colorKeyFor, DEFAULT_NEUTRAL_GRAY } from '../../utils/colors'
 import useNavbarOffset from '../../hooks/useNavbarOffset'
+import { SECURITY_FEATURES, PASSWORD_SECTION_VISIBLE } from '../../config/securityFeatures'
+import ChangePasswordSection from './ChangePasswordSection'
+import MfaSection from './MfaSection'
 
 const COLOR_MODE_OPTIONS = [
   { value: 'duration', label: 'Durata cursului (implicit)' },
@@ -180,6 +183,9 @@ export default function SettingsPage() {
         Preferintele de mai jos sunt personale — se salveaza in contul tau si te urmaresc pe orice
         dispozitiv de pe care te loghezi.
       </p>
+
+      {PASSWORD_SECTION_VISIBLE && <ChangePasswordSection />}
+      {SECURITY_FEATURES.mfa && <MfaSection />}
 
       <div className="admin-section">
         <h3>Alertă cursuri neclarificate (TBD)</h3>

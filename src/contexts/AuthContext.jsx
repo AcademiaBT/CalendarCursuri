@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
+import { SECURITY_FEATURES } from '../config/securityFeatures'
 
 const AuthContext = createContext(null)
 
@@ -7,6 +8,12 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  // AAL = "Authenticator Assurance Level" - aal1 (doar parola) sau aal2
+  // (parola + al doilea factor confirmat). Relevant doar daca SECURITY_
+  // FEATURES.mfa e activat - altfel ramane mereu null si nu are niciun
+  // efect (niciun user nu poate avea un factor 2FA inrolat daca
+  // functia a fost tot timpul dezactivata in interfata).
+  const [mfaLevel, setMfaLevel] = useState(null) // { currentLevel, nextLevel } | null
   // Tine minte ce user era deja logat, ca sa distingem o logare noua (adevarata)
   // de un eveniment "fals pozitiv" al Supabase - vezi comentariul de mai jos
   const loadedUserId = useRef(null)
@@ -64,6 +71,19 @@ export function AuthProvider({ children }) {
       .single()
     setProfile(data)
     setLoading(false)
+    refreshMfaLevel()
+  }
+
+  // Verifica daca sesiunea curenta a trecut deja de al doilea factor (aal2)
+  // sau mai are nevoie de el (aal1 cu un factor verificat inrolat). Complet
+  // inert daca functia 2FA e dezactivata din config.
+  async function refreshMfaLevel() {
+    if (!SECURITY_FEATURES.mfa) {
+      setMfaLevel(null)
+      return
+    }
+    const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (!error) setMfaLevel(data)
   }
 
   async function signIn(email, password) {
@@ -98,6 +118,11 @@ export function AuthProvider({ children }) {
     signIn,
     signOut,
     updatePreferences,
+    // 2FA (TOTP) - vezi src/config/securityFeatures.js. Cand SECURITY_
+    // FEATURES.mfa e false, needsMfaChallenge e mereu false (mfaLevel
+    // ramane null), deci ecranul de verificare cod nu apare niciodata.
+    needsMfaChallenge: mfaLevel?.currentLevel === 'aal1' && mfaLevel?.nextLevel === 'aal2',
+    refreshMfaLevel,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
