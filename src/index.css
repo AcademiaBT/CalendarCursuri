@@ -160,6 +160,52 @@ input:focus, select:focus, textarea:focus {
 }
 .row-height-drag-handle:hover, .row-height-drag-handle:active { color: var(--accent); }
 
+/* iconita de ajutor "?" cu tooltip - functioneaza la hover (desktop) SI la
+   tap/focus (mobil, unde title-ul nativ nu apare deloc la atingere) */
+.help-tooltip {
+  position: relative;
+  display: inline-flex;
+  outline: none;
+}
+.help-tooltip-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--border);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+}
+.help-tooltip-text {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: 220px;
+  background: var(--navy);
+  color: white;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  padding: 8px 10px;
+  border-radius: 6px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 60;
+}
+.help-tooltip:hover .help-tooltip-text,
+.help-tooltip:focus .help-tooltip-text,
+.help-tooltip:focus-within .help-tooltip-text {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .view-mode-toggle {
   display: flex;
   border: 1px solid var(--border);
@@ -180,9 +226,28 @@ input:focus, select:focus, textarea:focus {
 }
 .calendar-toolbar h2 { flex: 1; text-align: center; margin: 0; color: var(--navy); font-size: 20px; }
 
-.legend { display: flex; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
+.legend { display: flex; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
 .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
 .legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 2px solid; display: inline-block; }
+.legend-mode-select {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding-right: 12px;
+  border-right: 1px solid var(--border);
+}
+.legend-mode-select select {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+  background: white;
+}
 
 .loading-bar { color: var(--text-muted); font-size: 13px; margin-bottom: 8px; }
 
@@ -578,6 +643,7 @@ input:focus, select:focus, textarea:focus {
   .month-grid { font-size: 11px; }
   .week-day-header-name { font-size: 10px; }
   .week-day-header-date { font-size: 10px; }
+  .help-tooltip-text { width: 160px; }
 
   /* modalul de adaugare/editare curs: mai putin spatiu pierdut pe margini,
      butoanele de jos stivuite pe cate un rand, ca sa incapa mereu */

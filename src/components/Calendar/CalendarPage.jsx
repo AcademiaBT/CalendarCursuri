@@ -8,7 +8,7 @@ import {
   toISODate,
   coursesForDay,
 } from '../../utils/dateHelpers'
-import { getBarStyle, DURATION_LEGEND } from '../../utils/colors'
+import { getBarStyle, DURATION_LEGEND, colorKeyFor, styleFromHex, DEFAULT_NEUTRAL_GRAY } from '../../utils/colors'
 import { useAuth } from '../../contexts/AuthContext'
 import CourseModal from './CourseModal'
 import MonthGrid from './MonthGrid'
@@ -108,6 +108,26 @@ export default function CalendarPage() {
     customColors: profile?.custom_colors || {},
   }
 
+  // valorile distincte prezente printre cursurile afisate acum, folosite ca
+  // sa desenam legenda cu adevarat (nu doar text) pentru Responsabil/Categorie
+  const legendValues = useMemo(() => {
+    if (colorPrefs.colorMode === 'responsible') {
+      return [...new Set(courses.map((c) => c.responsible).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ro'))
+    }
+    if (colorPrefs.colorMode === 'category') {
+      return [...new Set(courses.map((c) => c.course_area).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ro'))
+    }
+    return []
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courses, colorPrefs.colorMode])
+
+  // schimbarea modului de colorare direct din Calendar - se salveaza imediat
+  // (aceeasi preferinta ca in Setari, profile.color_mode, sincronizata pe
+  // orice dispozitiv)
+  function handleColorModeChange(e) {
+    updatePreferences({ color_mode: e.target.value })
+  }
+
   const monthGrid = useMemo(() => buildMonthGrid(anchorDate), [anchorDate])
 
   const weeksToShow = useMemo(
@@ -190,7 +210,7 @@ export default function CalendarPage() {
         </div>
 
         {viewMode === 'week' && (
-          <div className="row-height-control" title="Inaltimea randurilor: overview (mic) vs. detalii (mare)">
+          <div className="row-height-control">
             <span className="row-height-label">Randuri</span>
             <button className="reorder-btn" onClick={() => adjustRowHeight(-6)} disabled={rowHeight <= 16}>−</button>
             <span
@@ -202,6 +222,12 @@ export default function CalendarPage() {
               ⠿
             </span>
             <button className="reorder-btn" onClick={() => adjustRowHeight(6)} disabled={rowHeight >= 72}>+</button>
+            <span className="help-tooltip" tabIndex={0}>
+              <span className="help-tooltip-icon">?</span>
+              <span className="help-tooltip-text">
+                Trage de puncte (⠿) pentru a ajusta liber inaltimea randurilor, sau apasa − / + pentru pasi fixi.
+              </span>
+            </span>
           </div>
         )}
 
@@ -217,6 +243,15 @@ export default function CalendarPage() {
       />
 
       <div className="legend">
+        <label className="legend-mode-select">
+          <span>Culoare dupa</span>
+          <select value={colorPrefs.colorMode} onChange={handleColorModeChange}>
+            <option value="duration">Durata cursului</option>
+            <option value="responsible">Responsabil</option>
+            <option value="category">Categorie (arie)</option>
+          </select>
+        </label>
+
         {colorPrefs.colorMode === 'duration' ? (
           DURATION_LEGEND.map((l) => (
             <span key={l.key} className="legend-item">
@@ -224,9 +259,20 @@ export default function CalendarPage() {
               {l.label}
             </span>
           ))
+        ) : legendValues.length > 0 ? (
+          legendValues.map((value) => {
+            const hex = colorPrefs.customColors[colorKeyFor(colorPrefs.colorMode, value)] || DEFAULT_NEUTRAL_GRAY
+            const style = styleFromHex(hex)
+            return (
+              <span key={value} className="legend-item">
+                <span className="legend-swatch" style={{ background: style.bg, borderColor: style.border }} />
+                {value}
+              </span>
+            )
+          })
         ) : (
           <span className="legend-item legend-note">
-            Culori dupa {colorPrefs.colorMode === 'responsible' ? 'responsabil' : 'categorie curs'} — configurabil in Setari
+            Niciun curs cu {colorPrefs.colorMode === 'responsible' ? 'responsabil' : 'categorie'} completat/a momentan.
           </span>
         )}
       </div>

@@ -45,7 +45,7 @@ function hexToRgb(hex) {
 
 // tinta bg-ul (opacitate redusa peste fundal alb), pastreaza culoarea aleasa
 // intacta pe bordura, si foloseste text inchis - lizibil pe orice tinta deschisa
-function styleFromHex(hex) {
+export function styleFromHex(hex) {
   return { bg: `${hex}30`, border: hex, text: '#20263a' }
 }
 
