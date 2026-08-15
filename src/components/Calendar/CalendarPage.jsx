@@ -30,6 +30,7 @@ export default function CalendarPage() {
   const [hoverInfo, setHoverInfo] = useState(null) // { course, top, left } | null
   const [hoveredCourseId, setHoveredCourseId] = useState(null) // pentru highlight/glow pe curs in tot calendarul
   const [dayDetail, setDayDetail] = useState(null) // Date | null - ziua pentru care aratam lista completa
+  const [tbdRefreshKey, setTbdRefreshKey] = useState(0) // incrementat la fiecare salvare de curs, ca alerta TBD sa reverifice
 
   // Latimile coloanelor din vizualizarea saptamanala - comune tuturor
   // blocurilor stivuite (redimensionezi o data, se aplica peste tot).
@@ -203,7 +204,13 @@ export default function CalendarPage() {
         </button>
       </div>
 
-      {profile?.responsible_name && <TbdAlertModal profile={profile} />}
+      {profile?.responsible_name && (
+        <TbdAlertModal
+          profile={profile}
+          refreshKey={tbdRefreshKey}
+          onEditCourse={(course) => setModalState({ course })}
+        />
+      )}
 
       <div className="legend">
         {colorPrefs.colorMode === 'duration' ? (
@@ -353,6 +360,7 @@ export default function CalendarPage() {
           onSaved={() => {
             setModalState(null)
             loadCourses()
+            setTbdRefreshKey((k) => k + 1)
           }}
         />
       )}
