@@ -38,6 +38,7 @@ export default function CalendarPage() {
   const [daysBlockWidth, setDaysBlockWidth] = useState(profile?.week_days_block_width || DEFAULT_DAYS_BLOCK_WIDTH)
   const [attrColWidths, setAttrColWidths] = useState(profile?.week_attr_col_widths || {})
   const [rowHeight, setRowHeight] = useState(profile?.week_row_height || DEFAULT_ROW_HEIGHT)
+  const [layoutSaveError, setLayoutSaveError] = useState(null)
   const widthsMounted = useRef(false)
 
   function handleAttrColWidthChange(key, width) {
@@ -74,12 +75,18 @@ export default function CalendarPage() {
       widthsMounted.current = true
       return
     }
-    const timeout = setTimeout(() => {
-      updatePreferences({
+    const timeout = setTimeout(async () => {
+      const { error } = await updatePreferences({
         week_days_block_width: Math.round(daysBlockWidth),
         week_attr_col_widths: attrColWidths,
         week_row_height: Math.round(rowHeight),
       })
+      if (error) {
+        console.error('Nu am putut salva dimensiunile calendarului:', error.message)
+        setLayoutSaveError(error.message)
+      } else {
+        setLayoutSaveError(null)
+      }
     }, 800)
     return () => clearTimeout(timeout)
   }, [daysBlockWidth, attrColWidths, rowHeight])
@@ -214,6 +221,13 @@ export default function CalendarPage() {
       </div>
 
       {loading && <div className="loading-bar">Se incarca cursurile...</div>}
+      {layoutSaveError && (
+        <div className="auth-error" style={{ marginBottom: 10 }}>
+          Nu am putut salva dimensiunile alese ({layoutSaveError}). Cel mai probabil trebuie rulat
+          din nou <code>schema.sql</code> în Supabase (SQL Editor) — vezi coloanele <code>week_days_block_width</code>,
+          {' '}<code>week_attr_col_widths</code>, <code>week_row_height</code> din tabelul <code>profiles</code>.
+        </div>
+      )}
 
       {viewMode === 'month' ? (
         <MonthGrid
