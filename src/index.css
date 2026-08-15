@@ -123,6 +123,12 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   align-items: center;
   gap: 28px;
+  /* ramane fixata sus, vizibila mereu, indiferent cat de mult se deruleaza
+     pagina in jos (relevant mai ales in vizualizarea Saptamanal, unde
+     continutul poate depasi inaltimea ecranului) */
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 .navbar-brand { font-weight: 700; font-size: 16px; margin-right: 12px; }
 .navbar-links { display: flex; gap: 18px; flex: 1; }
@@ -265,13 +271,15 @@ input:focus, select:focus, textarea:focus {
 .tbd-alert-card { max-width: 480px; }
 .tbd-alert-card .day-detail-item:hover { border-color: var(--accent); }
 
-/* alerta TBD, minimizata intr-un colet in coltul din dreapta sus - ramane
-   vizibila cat timp mai sunt cursuri neclarificate, ca userul sa nu piarda
-   din vedere ca mai are de rezolvat, in timp ce editeaza cursurile pe rand */
+/* alerta TBD, minimizata intr-o pastila centrata chiar pe bara de meniu
+   (sticky, mereu vizibila) - ramane la vedere cat timp mai sunt cursuri
+   neclarificate, ca userul sa nu piarda din vedere ca mai are de rezolvat,
+   in timp ce editeaza cursurile pe rand, dar fara sa acopere continutul
+   paginii (butoane, filtre etc.), ca inainte cand statea peste ele */
 .tbd-alert-badge {
   position: fixed;
-  right: 16px;
-  z-index: 150;
+  left: 50%;
+  z-index: 140; /* peste bara de meniu (100), dar sub orice modal deschis (500) */
   background: #fff3cd;
   color: #8a6d00;
   border: 1px solid #f2c14e;
@@ -283,11 +291,24 @@ input:focus, select:focus, textarea:focus {
   cursor: pointer;
   animation: tbd-badge-in 0.25s ease;
   max-width: calc(100vw - 32px);
+  white-space: nowrap;
+  /* "top" e setat din JS, ca centrul vertical al barei de meniu; combinat
+     cu translate, pastila e centrata perfect pe bara, indiferent de
+     inaltimea ei reala (pe mobil se poate rupe pe mai multe randuri) */
+  transform: translate(-50%, -50%);
 }
 .tbd-alert-badge:hover { filter: brightness(0.97); }
+/* pe mobil (bara de meniu rupta pe mai multe randuri), pastila sta chiar
+   sub bara intreaga, nu suprapusa peste mijlocul ei - vezi useNavbarOffset */
+.tbd-alert-badge-below { transform: translate(-50%, 0); }
 @keyframes tbd-badge-in {
-  from { opacity: 0; transform: translateY(-10px) scale(0.9); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+.tbd-alert-badge-below { animation-name: tbd-badge-in-below; }
+@keyframes tbd-badge-in-below {
+  from { opacity: 0; transform: translate(-50%, -10px) scale(0.9); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
 }
 
 .course-hover-popover {
@@ -312,7 +333,9 @@ input:focus, select:focus, textarea:focus {
 /* ---------- Modal ---------- */
 .modal-backdrop {
   position: fixed; inset: 0; background: rgba(20,24,40,0.5);
-  display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px;
+  /* peste bara de meniu (100) si peste pastila TBD (140), ca un modal
+     deschis sa acopere complet ecranul, inclusiv bara acum sticky */
+  display: flex; align-items: center; justify-content: center; z-index: 500; padding: 20px;
 }
 .modal-card {
   background: var(--card); border-radius: var(--radius); width: 100%; max-width: 620px;
@@ -535,6 +558,9 @@ input:focus, select:focus, textarea:focus {
   position: fixed;
   left: 0;
   right: 0;
+  /* "top" implicit 0 doar ca fallback - SettingsPage il suprascrie inline
+     cu inaltimea reala a barei de meniu (sticky), ca sa apara chiar sub ea,
+     nu suprapusa peste ea */
   top: 0;
   background: var(--danger);
   color: white;
@@ -544,7 +570,7 @@ input:focus, select:focus, textarea:focus {
   justify-content: space-between;
   gap: 14px;
   box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-  z-index: 100;
+  z-index: 90; /* sub bara de meniu (100) - apare imediat sub ea */
 }
 .floating-save-bar span { font-size: 13px; font-weight: 600; }
 .floating-save-bar button { background: var(--navy); flex-shrink: 0; }
@@ -588,8 +614,7 @@ input:focus, select:focus, textarea:focus {
   .floating-save-bar-actions { width: 100%; justify-content: stretch; }
   .floating-save-bar-actions button { flex: 1; font-size: 12px; padding: 8px 6px; }
 
-  /* alerta TBD minimizata: pe mobil, mai mica si mai aproape de margine,
-     ca sa nu acopere continutul util */
-  .tbd-alert-badge { right: 8px; font-size: 12px; padding: 8px 12px; }
+  /* alerta TBD minimizata: pe mobil, mai mica, ca sa incapa usor centrata */
+  .tbd-alert-badge { font-size: 12px; padding: 8px 12px; }
 }
 
