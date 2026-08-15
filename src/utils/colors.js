@@ -49,28 +49,10 @@ function styleFromHex(hex) {
   return { bg: `${hex}30`, border: hex, text: '#20263a' }
 }
 
-// culoare implicita, determinista (acelasi text produce mereu aceeasi
-// culoare), pentru valori (responsabil/categorie) care nu au fost inca
-// personalizate manual de user - ca sa nu arate toate identic, gri.
-function hashToHex(str) {
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i)
-    hash |= 0
-  }
-  const hue = Math.abs(hash) % 360
-  return hslToHex(hue, 62, 45)
-}
-
-function hslToHex(h, s, l) {
-  s /= 100
-  l /= 100
-  const k = (n) => (n + h / 30) % 12
-  const a = s * Math.min(l, 1 - l)
-  const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)))
-  const toHex = (x) => Math.round(255 * x).toString(16).padStart(2, '0')
-  return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`
-}
+// culoare implicita, neutra, pentru orice valoare (responsabil/categorie)
+// care nu a fost inca personalizata manual de user - un gri echilibrat, nici
+// prea deschis, nici prea inchis.
+export const DEFAULT_NEUTRAL_GRAY = '#8a94a6'
 
 // Cheia sub care se salveaza o culoare personalizata in profile.custom_colors
 export function colorKeyFor(mode, value) {
@@ -85,12 +67,12 @@ export function getBarStyle(course, prefs = {}) {
 
   if (colorMode === 'responsible' && course.responsible) {
     const key = colorKeyFor('responsible', course.responsible)
-    return styleFromHex(customColors[key] || hashToHex(key))
+    return styleFromHex(customColors[key] || DEFAULT_NEUTRAL_GRAY)
   }
 
   if (colorMode === 'category' && course.course_area) {
     const key = colorKeyFor('category', course.course_area)
-    return styleFromHex(customColors[key] || hashToHex(key))
+    return styleFromHex(customColors[key] || DEFAULT_NEUTRAL_GRAY)
   }
 
   // implicit (sau fallback daca lipseste responsabilul/categoria pe acest curs): dupa durata

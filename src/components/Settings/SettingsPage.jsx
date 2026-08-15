@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../contexts/AuthContext'
 import { BAR_FIELD_OPTIONS, ATTRIBUTE_COLUMN_OPTIONS } from '../Calendar/WeekGrid'
-import { DURATION_LEGEND, colorKeyFor } from '../../utils/colors'
+import { DURATION_LEGEND, colorKeyFor, DEFAULT_NEUTRAL_GRAY } from '../../utils/colors'
 
 const COLOR_MODE_OPTIONS = [
   { value: 'duration', label: 'Durata cursului (implicit)' },
@@ -17,7 +17,6 @@ export default function SettingsPage() {
   const [attrColumns, setAttrColumns] = useState(profile?.week_attribute_columns || ['interval', 'trainer', 'room', 'responsible'])
   const [colorMode, setColorMode] = useState(profile?.color_mode || 'duration')
   const [customColors, setCustomColors] = useState(profile?.custom_colors || {})
-  const [distinctResponsible, setDistinctResponsible] = useState([])
   const [distinctCategories, setDistinctCategories] = useState([])
   const [responsiblePersonsList, setResponsiblePersonsList] = useState([])
   const [responsibleName, setResponsibleName] = useState(profile?.responsible_name || '')
@@ -41,15 +40,12 @@ export default function SettingsPage() {
   useEffect(() => {
     supabase
       .from('courses')
-      .select('responsible, course_area')
+      .select('course_area')
       .then(({ data }) => {
-        const responsibleSet = new Set()
         const categorySet = new Set()
         for (const row of data || []) {
-          if (row.responsible) responsibleSet.add(row.responsible)
           if (row.course_area) categorySet.add(row.course_area)
         }
-        setDistinctResponsible([...responsibleSet].sort())
         setDistinctCategories([...categorySet].sort())
       })
   }, [])
@@ -157,8 +153,8 @@ export default function SettingsPage() {
     colorMode === 'duration'
       ? DURATION_LEGEND.map((d) => ({ key: colorKeyFor('duration', d.key), label: d.label, defaultHex: d.border }))
       : colorMode === 'responsible'
-      ? distinctResponsible.map((name) => ({ key: colorKeyFor('responsible', name), label: name, defaultHex: '#888888' }))
-      : distinctCategories.map((cat) => ({ key: colorKeyFor('category', cat), label: cat, defaultHex: '#888888' }))
+      ? responsiblePersonsList.map((r) => ({ key: colorKeyFor('responsible', r.name), label: r.name, defaultHex: DEFAULT_NEUTRAL_GRAY }))
+      : distinctCategories.map((cat) => ({ key: colorKeyFor('category', cat), label: cat, defaultHex: DEFAULT_NEUTRAL_GRAY }))
 
   return (
     <div className={`settings-page ${dirty ? 'settings-page-with-floating-bar' : ''}`}>
@@ -302,7 +298,7 @@ export default function SettingsPage() {
         <h3>Culoarea barelor din calendar</h3>
         <p className="admin-hint">
           Alege dupa ce se coloreaza cursurile, apoi personalizeaza culoarea fiecarei valori mai jos
-          (opțional — cele nepersonalizate primesc automat o culoare distincta).
+          (opțional — cele nepersonalizate rămân gri neutru, până le alegi o culoare).
         </p>
 
         <div className="settings-checkbox-list" style={{ marginBottom: 16 }}>

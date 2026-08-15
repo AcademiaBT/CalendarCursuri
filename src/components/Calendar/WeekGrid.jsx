@@ -143,6 +143,9 @@ export default function WeekGrid({
     .filter(Boolean)
 
   const dayColWidth = (daysBlockWidth || DEFAULT_DAYS_BLOCK_WIDTH) / DAY_COLS
+  // textul din bare/celule se scaleaza odata cu inaltimea randului (overview
+  // mic = font mic, detalii mari = font mai mare), intre limite lizibile
+  const dynamicFontSize = Math.min(20, Math.max(9, Math.round((rowHeight || DEFAULT_ROW_HEIGHT) * 0.5)))
   const gridTemplateColumns = [
     ...Array(DAY_COLS).fill(`${dayColWidth}px`),
     ...activeAttrColumns.map((c) => `${attrColWidths?.[c.key] ?? DEFAULT_ATTR_COL_WIDTH}px`),
@@ -200,6 +203,7 @@ export default function WeekGrid({
             style={{
               gridTemplateColumns,
               gridTemplateRows: `auto repeat(${weekCourses.length}, minmax(${rowHeight || DEFAULT_ROW_HEIGHT}px, auto))`,
+              '--row-font-size': `${dynamicFontSize}px`,
             }}
           >
             {weekDays.map((date, i) => (

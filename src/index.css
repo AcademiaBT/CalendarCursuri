@@ -420,7 +420,7 @@ input:focus, select:focus, textarea:focus {
 .week-course-bar {
   border-radius: 4px;
   padding: 2px 6px;
-  font-size: 11px;
+  font-size: var(--row-font-size, 11px);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -428,7 +428,7 @@ input:focus, select:focus, textarea:focus {
   cursor: pointer;
   min-width: 0;
   margin: 1px;
-  transition: box-shadow 0.12s ease, transform 0.12s ease;
+  transition: box-shadow 0.12s ease, transform 0.12s ease, font-size 0.1s ease;
 }
 .week-course-bar:hover { filter: brightness(0.97); }
 
@@ -452,7 +452,7 @@ input:focus, select:focus, textarea:focus {
    tot textul apare la hover (title nativ al browser-ului) */
 .week-attr-cell {
   padding: 2px 8px;
-  font-size: 11px;
+  font-size: var(--row-font-size, 11px);
   color: var(--text);
   border-left: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
@@ -462,6 +462,7 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   align-items: center;
   cursor: pointer;
+  transition: font-size 0.1s ease;
 }
 .week-attr-cell:hover { background: var(--accent-soft); }
 
