@@ -97,7 +97,7 @@ export default function TbdAlertModal({ profile, refreshKey, onEditCourse }) {
   }
 
   return (
-    <div className="modal-backdrop" onClick={() => setDismissed(true)}>
+    <div className="modal-backdrop" onClick={() => setMinimized(true)}>
       <div className="modal-card tbd-alert-card" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>⚠️ Cursuri neclarificate, în curând</h2>
