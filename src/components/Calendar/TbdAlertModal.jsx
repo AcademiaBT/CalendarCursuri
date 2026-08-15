@@ -18,11 +18,10 @@ export default function TbdAlertModal({ profile, refreshKey, onEditCourse }) {
   const [pendingCourses, setPendingCourses] = useState(null) // null = nu s-a verificat inca
   const [dismissed, setDismissed] = useState(false) // "Am inteles" - ascunde pentru restul sesiunii
   const [minimized, setMinimized] = useState(false)
-  const { center: navbarCenter, height: navbarHeight, isMobile } = useNavbarOffset()
-  // desktop: centrat direct pe bara de meniu (sticky), care are loc liber
-  // la mijloc intre linkuri si userul logat; mobil: bara se rupe pe mai
-  // multe randuri, asa ca punem pastila chiar sub ea intreaga, centrata
-  const badgeTop = isMobile ? navbarHeight + 10 : navbarCenter
+  // centrul vertical real al barei de meniu, indiferent daca are un rand
+  // (desktop) sau se rupe pe mai multe (ecran ingust/zoom mare) - astfel
+  // pastila ramane mereu PE bara, niciodata sub ea, peste continutul paginii
+  const { center: badgeTop } = useNavbarOffset()
 
   useEffect(() => {
     const todayIso = toISODate(new Date())
@@ -86,7 +85,7 @@ export default function TbdAlertModal({ profile, refreshKey, onEditCourse }) {
       // sta peste continutul paginii, unde putea acoperi butoane sau alte
       // elemente ale ecranului curent
       <button
-        className={`tbd-alert-badge ${isMobile ? 'tbd-alert-badge-below' : ''}`}
+        className="tbd-alert-badge"
         style={{ top: badgeTop }}
         onClick={() => setMinimized(false)}
       >

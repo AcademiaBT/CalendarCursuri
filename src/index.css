@@ -298,17 +298,9 @@ input:focus, select:focus, textarea:focus {
   transform: translate(-50%, -50%);
 }
 .tbd-alert-badge:hover { filter: brightness(0.97); }
-/* pe mobil (bara de meniu rupta pe mai multe randuri), pastila sta chiar
-   sub bara intreaga, nu suprapusa peste mijlocul ei - vezi useNavbarOffset */
-.tbd-alert-badge-below { transform: translate(-50%, 0); }
 @keyframes tbd-badge-in {
   from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
   to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-}
-.tbd-alert-badge-below { animation-name: tbd-badge-in-below; }
-@keyframes tbd-badge-in-below {
-  from { opacity: 0; transform: translate(-50%, -10px) scale(0.9); }
-  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
 }
 
 .course-hover-popover {

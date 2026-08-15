@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function Navbar() {
-  const { user, profile, isAdmin, signOut } = useAuth()
+  const { user, isAdmin, signOut } = useAuth()
 
   return (
     <nav className="navbar">
@@ -14,7 +14,7 @@ export default function Navbar() {
         {isAdmin && <NavLink to="/admin" className={({ isActive }) => (isActive ? 'active' : '')}>Administrare</NavLink>}
       </div>
       <div className="navbar-user">
-        <span>{profile?.display_name || user?.email}</span>
+        <span>{user?.email}</span>
         <button className="link-btn" onClick={signOut}>Deconectare</button>
       </div>
     </nav>
