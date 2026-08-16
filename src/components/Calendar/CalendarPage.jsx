@@ -184,6 +184,21 @@ export default function CalendarPage() {
     })
   }
 
+  // toate cheile din legenda curenta (indiferent de mod) - folosite de
+  // link-ul "ascunde tot" / "arata tot"
+  const allLegendKeys = useMemo(() => {
+    if (colorPrefs.colorMode === 'duration') return DURATION_LEGEND.map((l) => l.key)
+    return [...(hasUnclarified ? [UNCLARIFIED_LEGEND_KEY] : []), ...legendValues]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [colorPrefs.colorMode, legendValues, hasUnclarified])
+
+  function hideAllLegend() {
+    setHiddenLegendKeys(new Set(allLegendKeys))
+  }
+  function showAllLegend() {
+    setHiddenLegendKeys(new Set())
+  }
+
   // cursurile efectiv afisate in calendar, dupa filtrul din legenda -
   // legendValues/hasUnclarified de mai sus raman calculate din "courses"
   // (nefiltrat), ca butoanele sa nu dispara din legenda cand le debifezi
@@ -313,6 +328,15 @@ export default function CalendarPage() {
           </select>
         </label>
 
+        {allLegendKeys.length > 0 && (
+          <button
+            className="link-btn legend-reset"
+            onClick={hiddenLegendKeys.size > 0 ? showAllLegend : hideAllLegend}
+          >
+            {hiddenLegendKeys.size > 0 ? 'arată tot' : 'ascunde tot'}
+          </button>
+        )}
+
         {colorPrefs.colorMode === 'duration' ? (
           DURATION_LEGEND.map((l) => (
             <label key={l.key} className="legend-item legend-item-checkbox">
@@ -357,11 +381,6 @@ export default function CalendarPage() {
               <span className="legend-item legend-note">Niciun curs momentan.</span>
             )}
           </>
-        )}
-        {hiddenLegendKeys.size > 0 && (
-          <button className="link-btn legend-reset" onClick={() => setHiddenLegendKeys(new Set())}>
-            arată tot
-          </button>
         )}
       </div>
 
