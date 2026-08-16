@@ -3,7 +3,7 @@ import autoTable from 'jspdf-autotable'
 
 const HEADERS = [
   'Curs', 'Tip', 'Start', 'Sfarsit', 'Interval orar', 'Trainer', 'Sala',
-  'Participanti', 'Nr.', 'Responsabil',
+  'Participanti', 'Nr.', 'Responsabil', 'Categorie', 'Public tinta',
 ]
 
 export function exportCoursesToPdf(courses, { title = 'Raport cursuri', filtersLabel = '' } = {}) {
@@ -28,6 +28,8 @@ export function exportCoursesToPdf(courses, { title = 'Raport cursuri', filtersL
     c.participants_group || '-',
     c.participants_count ?? '-',
     c.responsible || '-',
+    c.course_area || '-',
+    c.target_audience || '-',
   ])
 
   autoTable(doc, {

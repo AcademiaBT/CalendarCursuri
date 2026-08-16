@@ -13,6 +13,8 @@ export function exportCoursesToXlsx(courses) {
     'Participanti (grup)': c.participants_group || '',
     'Nr. participanti': c.participants_count ?? '',
     'Responsabil': c.responsible || '',
+    'Categorie': c.course_area || '',
+    'Public tinta': c.target_audience || '',
     'Mail invitare': c.invite_mail || '',
     'Catering': c.catering || '',
     'Observatii': c.notes || '',
