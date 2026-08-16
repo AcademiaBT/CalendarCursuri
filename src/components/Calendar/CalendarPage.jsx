@@ -425,6 +425,7 @@ export default function CalendarPage() {
               onCourseClick={(course) => setModalState({ course })}
               onCourseHover={showHoverDetails}
               onCourseLeave={clearHover}
+              filtersActive={hiddenLegendKeys.size > 0}
             />
           ))}
         </div>

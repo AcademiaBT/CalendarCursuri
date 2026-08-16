@@ -139,7 +139,7 @@ function CourseBar({ course, weekDays, barFields, colorPrefs, rowIndex, hoveredC
 export default function WeekGrid({
   weekDays, courses, barFields, colorPrefs, attrColumns, hoveredCourseId, rowHeight,
   daysBlockWidth, attrColWidths, onDaysBlockWidthChange, onAttrColWidthChange,
-  onDayHeaderClick, onCourseClick, onCourseHover, onCourseLeave,
+  onDayHeaderClick, onCourseClick, onCourseHover, onCourseLeave, filtersActive,
 }) {
   // ordinea coloanelor respecta exact ordinea salvata de user in Setari
   // (nu ordinea "implicita" din ATTRIBUTE_COLUMN_OPTIONS)
@@ -200,7 +200,11 @@ export default function WeekGrid({
               </div>
             ))}
           </div>
-          <div className="week-grid-empty">Niciun curs programat in aceasta saptamana.</div>
+          <div className="week-grid-empty">
+            {filtersActive
+              ? 'Niciun curs vizibil aici — verifică dacă ai filtre active în legenda de mai sus ("arată tot" le anulează).'
+              : 'Niciun curs programat in aceasta saptamana.'}
+          </div>
         </>
       ) : (
         <div className="week-grid-scroll">
