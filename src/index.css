@@ -426,6 +426,7 @@ input:focus, select:focus, textarea:focus {
 .reports-filters label.settings-checkbox-row { flex-direction: row; align-items: center; }
 .reports-results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-size: 13px; color: var(--text-muted); }
 .reports-actions { display: flex; gap: 10px; }
+.report-tbd-cell { color: var(--danger); font-weight: 700; }
 
 /* ---------- Statistici (rapoarte agregate) ---------- */
 .reports-stats { display: flex; flex-direction: column; gap: 18px; }

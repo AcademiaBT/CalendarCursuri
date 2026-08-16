@@ -12,6 +12,14 @@ export const REPORT_EXPLANATIONS = {
   courseTypeMix: 'Distributia cursurilor pe tip (live, online, blended, e-learning), in perioada selectata.',
 }
 
+// true daca eticheta unui rand de statistica reprezinta valoare
+// neclarificata/lipsa (nu un trainer/sala/responsabil/tip real) - folosit ca
+// sa marcam acele randuri cu rosu/bold, la fel ca in lista de cursuri
+export const MISSING_STAT_LABELS = ['TBD', 'Fără categorie']
+export function isMissingStatKey(key) {
+  return MISSING_STAT_LABELS.includes(key)
+}
+
 // Grupeaza rezultatele dupa un camp (trainer/sala/responsabil/categorie/tip),
 // insumand nr. de cursuri, zile cumulate si participanti pentru fiecare
 // valoare distincta. Valorile lipsa sau "TBD" (pentru campurile cu acest

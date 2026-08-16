@@ -13,6 +13,7 @@ import {
   totalParticipants,
   periodDays,
   REPORT_EXPLANATIONS,
+  isMissingStatKey,
 } from '../../utils/reportStats'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 import DateInputRO from '../DateInputRO'
@@ -267,21 +268,27 @@ export default function ReportsPage() {
                 </tr>
               </thead>
               <tbody>
-                {results.map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.name}</td>
-                    <td>{c.course_type}</td>
-                    <td>{c.start_date}</td>
-                    <td>{c.end_date}</td>
-                    <td>{c.start_time?.slice(0, 5)}-{c.end_time?.slice(0, 5)}</td>
-                    <td>{c.trainer}</td>
-                    <td>{c.room}</td>
-                    <td>{c.participants_count}</td>
-                    <td>{c.responsible}</td>
-                    <td>{c.course_area || '—'}</td>
-                    <td>{c.target_audience || '—'}</td>
-                  </tr>
-                ))}
+                {results.map((c) => {
+                  // clasa "report-tbd-cell" (rosu + bold) pentru orice valoare
+                  // neclarificata (TBD sau lipsa) - acelasi criteriu ca in
+                  // exporturile PDF/Excel, ca sa fie consecvent peste tot
+                  const tbd = (v) => (!v || v === 'TBD' ? 'report-tbd-cell' : undefined)
+                  return (
+                    <tr key={c.id}>
+                      <td>{c.name}</td>
+                      <td className={tbd(c.course_type)}>{c.course_type}</td>
+                      <td>{c.start_date}</td>
+                      <td>{c.end_date}</td>
+                      <td>{c.start_time?.slice(0, 5)}-{c.end_time?.slice(0, 5)}</td>
+                      <td className={tbd(c.trainer)}>{c.trainer}</td>
+                      <td className={tbd(c.room)}>{c.room}</td>
+                      <td>{c.participants_count}</td>
+                      <td className={tbd(c.responsible)}>{c.responsible}</td>
+                      <td>{c.course_area || '—'}</td>
+                      <td>{c.target_audience || '—'}</td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           ) : (
@@ -318,7 +325,9 @@ function StatBarSection({ title, explanation, rows, periodDays, showOccupancy, c
             return (
               <div className="stats-bar-row" key={r.key}>
                 <div className="stats-bar-label">
-                  <span className="stats-bar-name">{r.key}</span>
+                  <span className={`stats-bar-name ${isMissingStatKey(r.key) ? 'report-tbd-cell' : ''}`}>
+                    {r.key}
+                  </span>
                   <span className="stats-bar-meta">
                     {r.count} {r.count === 1 ? 'curs' : 'cursuri'} · {r.days} {r.days === 1 ? 'zi' : 'zile'}
                     {occupancyPct !== null && ` · ${occupancyPct}% ocupare`}
@@ -364,7 +373,8 @@ function StatDistributionSection({ title, explanation, rows }) {
             {rows.map((r, i) => (
               <span key={r.key} className="stats-legend-item">
                 <span className="stats-legend-swatch" style={{ background: PALETTE[i % PALETTE.length] }} />
-                {r.key} — {r.count} ({Math.round((r.count / total) * 100)}%)
+                <span className={isMissingStatKey(r.key) ? 'report-tbd-cell' : ''}>{r.key}</span>
+                {' '}— {r.count} ({Math.round((r.count / total) * 100)}%)
               </span>
             ))}
           </div>

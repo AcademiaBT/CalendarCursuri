@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import * as XLSX from 'xlsx'
-import { REPORT_EXPLANATIONS } from './reportStats'
+import ExcelJS from 'exceljs'
+import { REPORT_EXPLANATIONS, isMissingStatKey } from './reportStats'
 
 // Definitia comuna a sectiunilor de statistici - aceeasi lista alimenteaza
 // atat exportul PDF cat si Excel, ca sa ramana mereu sincronizate (daca se
@@ -77,6 +77,12 @@ export function exportStatsToPdf(stats, { filtersLabel = '' } = {}) {
       startY: y,
       styles: { fontSize: 8 },
       headStyles: { fillColor: [40, 60, 90] },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.index === 0 && isMissingStatKey(section.rows[data.row.index].key)) {
+          data.cell.styles.textColor = [220, 53, 69]
+          data.cell.styles.fontStyle = 'bold'
+        }
+      },
       // bara vizuala desenata in fundalul coloanei "Zile", proportionala cu
       // valoarea maxima din acest tabel - willDrawCell ruleaza INAINTE ca
       // autoTable sa deseneze textul, deci bara ramane in spatele cifrei
@@ -97,38 +103,41 @@ export function exportStatsToPdf(stats, { filtersLabel = '' } = {}) {
 // ---------- Excel ----------
 
 // bara "desenata" din caractere pline/goale - simpla, dar surprinzator de
-// clara vizual chiar si intr-o celula de Excel obisnuita, fara sa fie
-// nevoie de formatare conditionala sau culori (limitate in libraria xlsx)
+// clara vizual chiar si intr-o celula de Excel obisnuita
 function textBar(ratio, width = 16) {
   const filled = Math.round(Math.max(0, Math.min(1, ratio)) * width)
   return '█'.repeat(filled) + '░'.repeat(width - filled)
 }
 
-export function exportStatsToXlsx(stats, { filtersLabel = '' } = {}) {
-  const workbook = XLSX.utils.book_new()
+export async function exportStatsToXlsx(stats, { filtersLabel = '' } = {}) {
+  const workbook = new ExcelJS.Workbook()
 
-  const summarySheet = XLSX.utils.aoa_to_sheet([
-    ['Raport statistici cursuri'],
-    [filtersLabel],
-    [],
-    ['Total cursuri', stats.totalCourses],
-    ['Total participanti instruiti', stats.totalParticipants],
-    ['Zile in perioada selectata', stats.periodDays],
-  ])
-  summarySheet['!cols'] = [{ wch: 32 }, { wch: 50 }]
-  XLSX.utils.book_append_sheet(workbook, summarySheet, 'Rezumat')
+  const summarySheet = workbook.addWorksheet('Rezumat')
+  summarySheet.columns = [{ width: 32 }, { width: 50 }]
+  summarySheet.addRow(['Raport statistici cursuri']).font = { bold: true, size: 14 }
+  summarySheet.addRow([filtersLabel])
+  summarySheet.addRow([])
+  summarySheet.addRow(['Total cursuri', stats.totalCourses])
+  summarySheet.addRow(['Total participanti instruiti', stats.totalParticipants])
+  summarySheet.addRow(['Zile in perioada selectata', stats.periodDays])
 
   for (const section of statSections(stats)) {
     if (section.rows.length === 0) continue
 
     const max = Math.max(1, ...section.rows.map((r) => r.days))
     const header = ['Nume', 'Nr. cursuri', 'Zile', ...(section.showOccupancy ? ['Ocupare'] : []), 'Participanti']
-    const aoa = [
-      [section.title],
-      [REPORT_EXPLANATIONS[section.key]],
-      [],
-      header,
-      ...section.rows.map((r) => [
+    // Excel limiteaza numele unei foi la 31 de caractere
+    const sheet = workbook.addWorksheet(section.title.slice(0, 31))
+    sheet.columns = header.map((h) => ({ width: h === 'Ocupare' ? 26 : h === 'Nume' ? 26 : 16 }))
+
+    sheet.addRow([section.title]).font = { bold: true, size: 13 }
+    sheet.addRow([REPORT_EXPLANATIONS[section.key]])
+    sheet.addRow([])
+    sheet.addRow(header).font = { bold: true, color: { argb: 'FFFFFFFF' } }
+    sheet.getRow(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2A44' } }
+
+    section.rows.forEach((r) => {
+      const row = sheet.addRow([
         r.key,
         r.count,
         r.days,
@@ -136,13 +145,21 @@ export function exportStatsToXlsx(stats, { filtersLabel = '' } = {}) {
           ? [`${textBar(r.days / max)}  ${stats.periodDays > 0 ? Math.round((r.days / stats.periodDays) * 100) : 0}%`]
           : []),
         r.participants || '',
-      ]),
-    ]
-    const sheet = XLSX.utils.aoa_to_sheet(aoa)
-    sheet['!cols'] = header.map((h) => ({ wch: h === 'Ocupare' ? 26 : h === 'Nume' ? 26 : 16 }))
-    // Excel limiteaza numele unei foi la 31 de caractere
-    XLSX.utils.book_append_sheet(workbook, sheet, section.title.slice(0, 31))
+      ])
+      // randurile neclarificate (TBD/Fara categorie) apar cu rosu si bold,
+      // la fel ca in restul aplicatiei si in exportul listei de cursuri
+      if (isMissingStatKey(r.key)) {
+        row.getCell(1).font = { bold: true, color: { argb: 'FFDC3545' } }
+      }
+    })
   }
 
-  XLSX.writeFile(workbook, `statistici-cursuri-${new Date().toISOString().slice(0, 10)}.xlsx`)
+  const buffer = await workbook.xlsx.writeBuffer()
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `statistici-cursuri-${new Date().toISOString().slice(0, 10)}.xlsx`
+  link.click()
+  URL.revokeObjectURL(url)
 }

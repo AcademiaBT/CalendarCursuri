@@ -1,30 +1,59 @@
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 
-export function exportCoursesToXlsx(courses) {
-  const rows = courses.map((c) => ({
-    'Denumire curs': c.name,
-    'Tip curs': c.course_type || '',
-    'Data start': c.start_date,
-    'Data sfarsit': c.end_date,
-    'Ora start': c.start_time?.slice(0, 5) || '',
-    'Ora sfarsit': c.end_time?.slice(0, 5) || '',
-    'Trainer': c.trainer || '',
-    'Sala': c.room || '',
-    'Participanti (grup)': c.participants_group || '',
-    'Nr. participanti': c.participants_count ?? '',
-    'Responsabil': c.responsible || '',
-    'Categorie': c.course_area || '',
-    'Public tinta': c.target_audience || '',
-    'Mail invitare': c.invite_mail || '',
-    'Catering': c.catering || '',
-    'Observatii': c.notes || '',
-  }))
+const HEADERS = [
+  'Denumire curs', 'Tip curs', 'Data start', 'Data sfarsit', 'Ora start', 'Ora sfarsit',
+  'Trainer', 'Sala', 'Participanti (grup)', 'Nr. participanti', 'Responsabil',
+  'Categorie', 'Public tinta', 'Mail invitare', 'Catering', 'Observatii',
+]
 
-  const worksheet = XLSX.utils.json_to_sheet(rows)
-  worksheet['!cols'] = Object.keys(rows[0] || {}).map(() => ({ wch: 18 }))
+// coloanele care pot fi "TBD" (neclarificate) si campul brut corespunzator -
+// folosite ca sa marcam cu rosu/bold acele celule (1-indexat, ca in exceljs)
+const TBD_COLUMNS = { 2: 'course_type', 7: 'trainer', 8: 'room', 11: 'responsible' }
 
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Cursuri')
+export async function exportCoursesToXlsx(courses) {
+  const workbook = new ExcelJS.Workbook()
+  const sheet = workbook.addWorksheet('Cursuri')
 
-  XLSX.writeFile(workbook, `raport-cursuri-${new Date().toISOString().slice(0, 10)}.xlsx`)
+  sheet.columns = HEADERS.map((header) => ({ header, width: header.length < 14 ? 16 : 20 }))
+  sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } }
+  sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2A44' } }
+
+  courses.forEach((c) => {
+    const row = sheet.addRow([
+      c.name,
+      c.course_type || '',
+      c.start_date,
+      c.end_date,
+      c.start_time?.slice(0, 5) || '',
+      c.end_time?.slice(0, 5) || '',
+      c.trainer || '',
+      c.room || '',
+      c.participants_group || '',
+      c.participants_count ?? '',
+      c.responsible || '',
+      c.course_area || '',
+      c.target_audience || '',
+      c.invite_mail || '',
+      c.catering || '',
+      c.notes || '',
+    ])
+
+    // valorile TBD/neclarificate (tip, trainer, sala, responsabil) apar cu
+    // rosu si bold, ca sa fie evident dintr-o privire ce mai e de rezolvat
+    for (const [colIndex, field] of Object.entries(TBD_COLUMNS)) {
+      const value = c[field]
+      if (!value || value === 'TBD') {
+        row.getCell(Number(colIndex)).font = { bold: true, color: { argb: 'FFDC3545' } }
+      }
+    }
+  })
+
+  const buffer = await workbook.xlsx.writeBuffer()
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `raport-cursuri-${new Date().toISOString().slice(0, 10)}.xlsx`
+  link.click()
+  URL.revokeObjectURL(url)
 }
