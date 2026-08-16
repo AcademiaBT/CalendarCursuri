@@ -427,6 +427,51 @@ input:focus, select:focus, textarea:focus {
 .reports-results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-size: 13px; color: var(--text-muted); }
 .reports-actions { display: flex; gap: 10px; }
 
+/* ---------- Statistici (rapoarte agregate) ---------- */
+.reports-stats { display: flex; flex-direction: column; gap: 18px; }
+
+.stats-summary-row { display: flex; gap: 16px; flex-wrap: wrap; }
+.stats-summary-card {
+  flex: 1;
+  min-width: 160px;
+  background: linear-gradient(135deg, var(--navy), #1f2b52);
+  color: white;
+  border-radius: var(--radius);
+  padding: 18px 20px;
+}
+.stats-summary-value { font-size: 32px; font-weight: 800; line-height: 1.1; }
+.stats-summary-label { font-size: 13px; opacity: 0.8; margin-top: 4px; }
+
+.stats-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+}
+.stats-card h3 { margin: 0 0 4px; }
+.stats-card > .admin-hint { margin-top: 0; margin-bottom: 14px; }
+
+.stats-bar-list { display: flex; flex-direction: column; gap: 12px; }
+.stats-bar-row { display: flex; flex-direction: column; gap: 4px; }
+.stats-bar-label { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 13px; }
+.stats-bar-name { font-weight: 700; color: var(--navy); }
+.stats-bar-meta { color: var(--text-muted); font-size: 12px; white-space: nowrap; }
+.stats-bar-track { background: var(--bg); border-radius: 999px; height: 10px; overflow: hidden; }
+.stats-bar-fill { height: 100%; border-radius: 999px; transition: width 0.3s ease; }
+
+.stats-stacked-bar {
+  display: flex;
+  height: 22px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg);
+  margin-bottom: 12px;
+}
+.stats-stacked-segment { height: 100%; min-width: 2px; }
+.stats-legend { display: flex; flex-wrap: wrap; gap: 12px 20px; }
+.stats-legend-item { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); }
+.stats-legend-swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; flex-shrink: 0; }
+
 /* ---------- Week view (Gantt-style, saptamani stivuite) ---------- */
 .week-stack { display: flex; flex-direction: column; gap: 18px; padding-bottom: 24px; }
 

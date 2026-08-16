@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabaseClient'
 import { exportCoursesToPdf } from '../../utils/exportPdf'
 import { exportCoursesToXlsx } from '../../utils/exportXlsx'
+import { exportStatsToPdf, exportStatsToXlsx } from '../../utils/exportStats'
 import { toISODate } from '../../utils/dateHelpers'
 import {
   trainerLoadReport,
@@ -11,6 +12,7 @@ import {
   courseTypeMixReport,
   totalParticipants,
   periodDays,
+  REPORT_EXPLANATIONS,
 } from '../../utils/reportStats'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 import DateInputRO from '../DateInputRO'
@@ -131,6 +133,7 @@ export default function ReportsPage() {
   const stats = useMemo(() => {
     if (!results) return null
     return {
+      totalCourses: results.length,
       trainerLoad: trainerLoadReport(results),
       roomOccupancy: roomOccupancyReport(results),
       responsibleLoad: responsibleLoadReport(results),
@@ -282,7 +285,7 @@ export default function ReportsPage() {
               </tbody>
             </table>
           ) : (
-            <StatsView stats={stats} />
+            <StatsView stats={stats} filtersLabel={filtersLabel()} />
           )}
         </div>
       )}
@@ -290,64 +293,148 @@ export default function ReportsPage() {
   )
 }
 
-// Tabel simplu de agregare, reutilizat pentru fiecare raport (incarcare
-// traineri/sali/responsabili, mix categorii/tip) - "showOccupancy" adauga o
-// coloana procentuala fata de numarul de zile din intervalul selectat
-// (relevant pentru traineri/sali - "cat de ocupati au fost", nu si pentru
-// responsabili/categorii, unde procentul n-ar avea sens la fel de direct).
-function StatsTable({ title, rows, periodDays, showOccupancy }) {
+// Paleta ciclica de culori pentru distributii (mix categorii/tip curs) -
+// contrast suficient intre segmente consecutive, aceleasi nuante ca restul
+// aplicatiei acolo unde se suprapun (albastru/verde/portocaliu/rosu, plus
+// cateva in completare pentru liste mai lungi).
+const PALETTE = ['#2f6fed', '#1f9d55', '#f2900c', '#e0293f', '#8b5cf6', '#0ea5e9', '#d946ef', '#64748b']
+
+// Card cu bare orizontale - o valoare pe rand, latimea barei proportionala
+// cu maximul din lista (nu cu un total fix), ca sa se vada clar cine are
+// cel mai mult/putin, chiar si cu doar 2-3 valori in lista.
+function StatBarSection({ title, explanation, rows, periodDays, showOccupancy, color }) {
+  const max = Math.max(1, ...rows.map((r) => r.days))
   return (
-    <div className="admin-section">
+    <div className="stats-card">
       <h3>{title}</h3>
+      <p className="admin-hint">{explanation}</p>
       {rows.length === 0 ? (
         <p className="admin-hint">Niciun rezultat pentru filtrele curente.</p>
       ) : (
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>Nume</th>
-              <th>Nr. cursuri</th>
-              <th>Zile cumulate</th>
-              {showOccupancy && <th>Ocupare (din interval)</th>}
-              <th>Participanti</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.key}>
-                <td>{r.key}</td>
-                <td>{r.count}</td>
-                <td>{r.days}</td>
-                {showOccupancy && (
-                  <td>{periodDays > 0 ? Math.round((r.days / periodDays) * 100) : 0}%</td>
-                )}
-                <td>{r.participants || '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="stats-bar-list">
+          {rows.map((r) => {
+            const ratio = r.days / max
+            const occupancyPct = showOccupancy && periodDays > 0 ? Math.round((r.days / periodDays) * 100) : null
+            return (
+              <div className="stats-bar-row" key={r.key}>
+                <div className="stats-bar-label">
+                  <span className="stats-bar-name">{r.key}</span>
+                  <span className="stats-bar-meta">
+                    {r.count} {r.count === 1 ? 'curs' : 'cursuri'} · {r.days} {r.days === 1 ? 'zi' : 'zile'}
+                    {occupancyPct !== null && ` · ${occupancyPct}% ocupare`}
+                    {r.participants > 0 && ` · ${r.participants} participanți`}
+                  </span>
+                </div>
+                <div className="stats-bar-track">
+                  <div className="stats-bar-fill" style={{ width: `${ratio * 100}%`, background: color }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
       )}
     </div>
   )
 }
 
-function StatsView({ stats }) {
+// Card cu bara stivuita (100% latime, segmente colorate proportional) +
+// legenda - potrivit pentru rapoarte de tip "distributie/mix" (categorii,
+// tip curs), unde intereseaza proportia din total, nu valori individuale.
+function StatDistributionSection({ title, explanation, rows }) {
+  const total = rows.reduce((s, r) => s + r.count, 0) || 1
+  return (
+    <div className="stats-card">
+      <h3>{title}</h3>
+      <p className="admin-hint">{explanation}</p>
+      {rows.length === 0 ? (
+        <p className="admin-hint">Niciun rezultat pentru filtrele curente.</p>
+      ) : (
+        <>
+          <div className="stats-stacked-bar">
+            {rows.map((r, i) => (
+              <div
+                key={r.key}
+                className="stats-stacked-segment"
+                style={{ width: `${(r.count / total) * 100}%`, background: PALETTE[i % PALETTE.length] }}
+                title={`${r.key}: ${r.count} (${Math.round((r.count / total) * 100)}%)`}
+              />
+            ))}
+          </div>
+          <div className="stats-legend">
+            {rows.map((r, i) => (
+              <span key={r.key} className="stats-legend-item">
+                <span className="stats-legend-swatch" style={{ background: PALETTE[i % PALETTE.length] }} />
+                {r.key} — {r.count} ({Math.round((r.count / total) * 100)}%)
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function StatsView({ stats, filtersLabel }) {
   if (!stats) return null
   return (
     <div className="reports-stats">
-      <div className="admin-section">
-        <h3>Total participanti instruiti</h3>
-        <p style={{ fontSize: 28, fontWeight: 700, color: 'var(--navy)', margin: 0 }}>
-          {stats.totalParticipants}
-        </p>
-        <p className="admin-hint">Suma "Nr. participanti" pentru toate cursurile din rezultatul curent.</p>
+      <div className="stats-summary-row">
+        <div className="stats-summary-card">
+          <div className="stats-summary-value">{stats.totalCourses}</div>
+          <div className="stats-summary-label">Cursuri</div>
+        </div>
+        <div className="stats-summary-card">
+          <div className="stats-summary-value">{stats.totalParticipants}</div>
+          <div className="stats-summary-label">Participanți instruiți</div>
+        </div>
+        <div className="stats-summary-card">
+          <div className="stats-summary-value">{stats.periodDays}</div>
+          <div className="stats-summary-label">Zile în perioadă</div>
+        </div>
       </div>
 
-      <StatsTable title="Incarcare traineri" rows={stats.trainerLoad} periodDays={stats.periodDays} showOccupancy />
-      <StatsTable title="Ocupare sali" rows={stats.roomOccupancy} periodDays={stats.periodDays} showOccupancy />
-      <StatsTable title="Volum per responsabil" rows={stats.responsibleLoad} periodDays={stats.periodDays} />
-      <StatsTable title="Mix pe categorii (arie curs)" rows={stats.categoryMix} periodDays={stats.periodDays} />
-      <StatsTable title="Mix pe tip curs" rows={stats.courseTypeMix} periodDays={stats.periodDays} />
+      <StatBarSection
+        title="Încărcare traineri"
+        explanation={REPORT_EXPLANATIONS.trainerLoad}
+        rows={stats.trainerLoad}
+        periodDays={stats.periodDays}
+        showOccupancy
+        color="#2f6fed"
+      />
+      <StatBarSection
+        title="Ocupare săli"
+        explanation={REPORT_EXPLANATIONS.roomOccupancy}
+        rows={stats.roomOccupancy}
+        periodDays={stats.periodDays}
+        showOccupancy
+        color="#1f9d55"
+      />
+      <StatBarSection
+        title="Volum per responsabil"
+        explanation={REPORT_EXPLANATIONS.responsibleLoad}
+        rows={stats.responsibleLoad}
+        periodDays={stats.periodDays}
+        color="#8b5cf6"
+      />
+      <StatDistributionSection
+        title="Mix pe categorii (arie curs)"
+        explanation={REPORT_EXPLANATIONS.categoryMix}
+        rows={stats.categoryMix}
+      />
+      <StatDistributionSection
+        title="Mix pe tip curs"
+        explanation={REPORT_EXPLANATIONS.courseTypeMix}
+        rows={stats.courseTypeMix}
+      />
+
+      <div className="reports-actions" style={{ marginTop: 6 }}>
+        <button onClick={() => exportStatsToPdf(stats, { filtersLabel })}>
+          Descarcă statistici (PDF)
+        </button>
+        <button className="secondary-btn" onClick={() => exportStatsToXlsx(stats, { filtersLabel })}>
+          Descarcă statistici (Excel)
+        </button>
+      </div>
     </div>
   )
 }
