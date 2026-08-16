@@ -14,6 +14,10 @@ export function AuthProvider({ children }) {
   // efect (niciun user nu poate avea un factor 2FA inrolat daca
   // functia a fost tot timpul dezactivata in interfata).
   const [mfaLevel, setMfaLevel] = useState(null) // { currentLevel, nextLevel } | null
+  // incrementat de oriunde se salveaza un curs (CourseModal, prin CalendarPage),
+  // ca alerta TBD (montata o singura data, in App.jsx, cat timp userul e
+  // logat) sa reverifice lista de cursuri neclarificate
+  const [tbdRefreshKey, setTbdRefreshKey] = useState(0)
   // Tine minte ce user era deja logat, ca sa distingem o logare noua (adevarata)
   // de un eveniment "fals pozitiv" al Supabase - vezi comentariul de mai jos
   const loadedUserId = useRef(null)
@@ -123,6 +127,8 @@ export function AuthProvider({ children }) {
     // ramane null), deci ecranul de verificare cod nu apare niciodata.
     needsMfaChallenge: mfaLevel?.currentLevel === 'aal1' && mfaLevel?.nextLevel === 'aal2',
     refreshMfaLevel,
+    tbdRefreshKey,
+    bumpTbdRefresh: () => setTbdRefreshKey((k) => k + 1),
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

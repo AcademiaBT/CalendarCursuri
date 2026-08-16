@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Navbar from './components/Navbar'
 import Login from './components/Login'
@@ -8,11 +8,13 @@ import CalendarPage from './components/Calendar/CalendarPage'
 import AdminPanel from './components/Admin/AdminPanel'
 import ReportsPage from './components/Reports/ReportsPage'
 import SettingsPage from './components/Settings/SettingsPage'
+import TbdAlertModal from './components/Calendar/TbdAlertModal'
 import { SECURITY_FEATURES } from './config/securityFeatures'
 import { isPasswordExpired } from './utils/passwordValidation'
 
 function AppShell() {
-  const { user, profile, isAdmin, loading, needsMfaChallenge } = useAuth()
+  const { user, profile, isAdmin, loading, needsMfaChallenge, tbdRefreshKey } = useAuth()
+  const navigate = useNavigate()
 
   if (loading) return <div className="loading-screen">Se incarca...</div>
   if (!user) return <Login />
@@ -27,6 +29,16 @@ function AppShell() {
   return (
     <div className="app-shell">
       <Navbar />
+      {/* Montata aici (nu in CalendarPage), ca sa nu se remonteze - si sa nu-si
+          piarda starea (minimizata sau inchisa) - de fiecare data cand userul
+          navigheaza la alta pagina si se intoarce. Apare o singura data pe
+          sesiune de logare; daca a fost minimizata, doar pastila ramane
+          vizibila pe bara de meniu, pe orice pagina. */}
+      <TbdAlertModal
+        profile={profile}
+        refreshKey={tbdRefreshKey}
+        onEditCourse={(course) => navigate('/', { state: { editCourse: course } })}
+      />
       <main className="app-main">
         <Routes>
           <Route path="/" element={<CalendarPage />} />

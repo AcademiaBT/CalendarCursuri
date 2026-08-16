@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { addMonths, subMonths, addWeeks, subWeeks, format } from 'date-fns'
 import { supabase } from '../../supabaseClient'
 import {
@@ -13,7 +14,6 @@ import { useAuth } from '../../contexts/AuthContext'
 import CourseModal from './CourseModal'
 import MonthGrid from './MonthGrid'
 import WeekGrid, { DEFAULT_DAYS_BLOCK_WIDTH, DEFAULT_ATTR_COL_WIDTH, DEFAULT_ROW_HEIGHT } from './WeekGrid'
-import TbdAlertModal from './TbdAlertModal'
 import HelpTooltip from '../HelpTooltip'
 import { suppressNextGhostClick } from '../../utils/dragHelpers'
 
@@ -26,7 +26,9 @@ const WEEKS_VISIBLE = 4
 const UNCLARIFIED_LEGEND_KEY = '__unclarified__'
 
 export default function CalendarPage() {
-  const { profile, updatePreferences } = useAuth()
+  const { profile, updatePreferences, bumpTbdRefresh } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [viewMode, setViewMode] = useState('month') // 'month' | 'week'
   const [anchorDate, setAnchorDate] = useState(new Date())
   const [courses, setCourses] = useState([])
@@ -35,7 +37,18 @@ export default function CalendarPage() {
   const [hoverInfo, setHoverInfo] = useState(null) // { course, top, left } | null
   const [hoveredCourseId, setHoveredCourseId] = useState(null) // pentru highlight/glow pe curs in tot calendarul
   const [dayDetail, setDayDetail] = useState(null) // Date | null - ziua pentru care aratam lista completa
-  const [tbdRefreshKey, setTbdRefreshKey] = useState(0) // incrementat la fiecare salvare de curs, ca alerta TBD sa reverifice
+
+  // click pe un curs din alerta TBD (montata global, in App.jsx) navigheaza
+  // aici si trimite cursul de editat prin router state - il preluam si
+  // deschidem modalul, apoi curatam state-ul, ca sa nu se redeschida la
+  // urmatoarea navigare inapoi pe aceasta pagina
+  useEffect(() => {
+    if (location.state?.editCourse) {
+      setModalState({ course: location.state.editCourse })
+      navigate('.', { replace: true, state: null })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state])
 
   // Latimile coloanelor din vizualizarea saptamanala - comune tuturor
   // blocurilor stivuite (redimensionezi o data, se aplica peste tot).
@@ -281,10 +294,7 @@ export default function CalendarPage() {
               ⠿
             </span>
             <button className="reorder-btn" onClick={() => adjustRowHeight(6)} disabled={rowHeight >= 72}>+</button>
-            <HelpTooltip
-              align="right"
-              text="Trage de puncte (⠿) pentru a ajusta liber inaltimea randurilor, sau apasa − / + pentru pasi fixi."
-            />
+            <HelpTooltip text="+/- sau click si drag pe 6 puncte pentru a mari/micsora inaltimea randurilor" />
           </div>
         )}
 
@@ -292,12 +302,6 @@ export default function CalendarPage() {
           + Adauga curs
         </button>
       </div>
-
-      <TbdAlertModal
-        profile={profile}
-        refreshKey={tbdRefreshKey}
-        onEditCourse={(course) => setModalState({ course })}
-      />
 
       <div className="legend">
         <label className="legend-mode-select">
@@ -331,7 +335,7 @@ export default function CalendarPage() {
                   onChange={() => toggleLegendKey(UNCLARIFIED_LEGEND_KEY)}
                 />
                 <span className="legend-swatch" style={{ background: '#8a94a630', borderColor: '#8a94a6' }} />
-                Neclarificat — <span className="unclarified-badge">TBD</span>
+                <span className="unclarified-badge">TBD</span>
               </label>
             )}
             {legendValues.map((value) => {
@@ -495,7 +499,7 @@ export default function CalendarPage() {
           onSaved={() => {
             setModalState(null)
             loadCourses()
-            setTbdRefreshKey((k) => k + 1)
+            bumpTbdRefresh()
           }}
         />
       )}
