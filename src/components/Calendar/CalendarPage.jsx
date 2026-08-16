@@ -8,7 +8,7 @@ import {
   toISODate,
   coursesForDay,
 } from '../../utils/dateHelpers'
-import { getBarStyle, DURATION_LEGEND, colorKeyFor, styleFromHex, DEFAULT_NEUTRAL_GRAY } from '../../utils/colors'
+import { getBarStyle, getDurationStyle, DURATION_LEGEND, colorKeyFor, styleFromHex, DEFAULT_NEUTRAL_GRAY } from '../../utils/colors'
 import { useAuth } from '../../contexts/AuthContext'
 import CourseModal from './CourseModal'
 import MonthGrid from './MonthGrid'
@@ -21,6 +21,9 @@ import { suppressNextGhostClick } from '../../utils/dragHelpers'
 // saptamanala - "Saptamana anterioara/urmatoare" muta toata fereastra cu o
 // saptamana, ca un scroll continuu, la fel ca in modelul Excel.
 const WEEKS_VISIBLE = 4
+// cheia folosita in legenda/filtru pentru cursurile fara valoare la
+// criteriul ales (responsabil TBD/gol, categorie goala)
+const UNCLARIFIED_LEGEND_KEY = '__unclarified__'
 
 export default function CalendarPage() {
   const { profile, updatePreferences } = useAuth()
@@ -133,6 +136,49 @@ export default function CalendarPage() {
     return false
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courses, colorPrefs.colorMode])
+
+  // Filtrare prin click pe legenda: fiecare element (durata/responsabil/
+  // categorie/neclarificat) e un checkbox - bifat implicit (arata tot),
+  // debifarea ascunde acele cursuri din calendar (Lunar + Saptamanal +
+  // lista de detalii pe zi). Tine minte doar cheile ASCUNSE, ca sa nu
+  // trebuiasca sa cunoastem dinainte toate valorile posibile.
+  const [hiddenLegendKeys, setHiddenLegendKeys] = useState(new Set())
+
+  // schimbarea criteriului de colorare reseteaza filtrul - valorile din
+  // legenda sunt complet diferite intre Durata/Responsabil/Categorie, deci
+  // un filtru vechi nu mai are sens (si ar putea ascunde tot, fara sa fie
+  // evident de ce)
+  useEffect(() => {
+    setHiddenLegendKeys(new Set())
+  }, [colorPrefs.colorMode])
+
+  function legendKeyFor(course) {
+    if (colorPrefs.colorMode === 'responsible') {
+      return course.responsible && course.responsible !== 'TBD' ? course.responsible : UNCLARIFIED_LEGEND_KEY
+    }
+    if (colorPrefs.colorMode === 'category') {
+      return course.course_area || UNCLARIFIED_LEGEND_KEY
+    }
+    return getDurationStyle(course.start_date, course.end_date).key
+  }
+
+  function toggleLegendKey(key) {
+    setHiddenLegendKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  // cursurile efectiv afisate in calendar, dupa filtrul din legenda -
+  // legendValues/hasUnclarified de mai sus raman calculate din "courses"
+  // (nefiltrat), ca butoanele sa nu dispara din legenda cand le debifezi
+  const visibleCourses = useMemo(() => {
+    if (hiddenLegendKeys.size === 0) return courses
+    return courses.filter((c) => !hiddenLegendKeys.has(legendKeyFor(c)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courses, hiddenLegendKeys, colorPrefs.colorMode])
 
   // schimbarea modului de colorare direct din Calendar - se salveaza imediat
   // (aceeasi preferinta ca in Setari, profile.color_mode, sincronizata pe
@@ -265,33 +311,53 @@ export default function CalendarPage() {
 
         {colorPrefs.colorMode === 'duration' ? (
           DURATION_LEGEND.map((l) => (
-            <span key={l.key} className="legend-item">
+            <label key={l.key} className="legend-item legend-item-checkbox">
+              <input
+                type="checkbox"
+                checked={!hiddenLegendKeys.has(l.key)}
+                onChange={() => toggleLegendKey(l.key)}
+              />
               <span className="legend-swatch" style={{ background: l.bg, borderColor: l.border }} />
               {l.label}
-            </span>
+            </label>
           ))
         ) : (
           <>
             {hasUnclarified && (
-              <span className="legend-item" title="Fundal gri neutru, cu eticheta TBD in rosu, direct pe bara">
+              <label className="legend-item legend-item-checkbox" title="Fundal gri neutru, cu eticheta TBD in rosu, direct pe bara">
+                <input
+                  type="checkbox"
+                  checked={!hiddenLegendKeys.has(UNCLARIFIED_LEGEND_KEY)}
+                  onChange={() => toggleLegendKey(UNCLARIFIED_LEGEND_KEY)}
+                />
                 <span className="legend-swatch" style={{ background: '#8a94a630', borderColor: '#8a94a6' }} />
                 Neclarificat — <span className="unclarified-badge">TBD</span>
-              </span>
+              </label>
             )}
             {legendValues.map((value) => {
               const hex = colorPrefs.customColors[colorKeyFor(colorPrefs.colorMode, value)] || DEFAULT_NEUTRAL_GRAY
               const style = styleFromHex(hex)
               return (
-                <span key={value} className="legend-item">
+                <label key={value} className="legend-item legend-item-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={!hiddenLegendKeys.has(value)}
+                    onChange={() => toggleLegendKey(value)}
+                  />
                   <span className="legend-swatch" style={{ background: style.bg, borderColor: style.border }} />
                   {value}
-                </span>
+                </label>
               )
             })}
             {legendValues.length === 0 && !hasUnclarified && (
               <span className="legend-item legend-note">Niciun curs momentan.</span>
             )}
           </>
+        )}
+        {hiddenLegendKeys.size > 0 && (
+          <button className="link-btn legend-reset" onClick={() => setHiddenLegendKeys(new Set())}>
+            arată tot
+          </button>
         )}
       </div>
 
@@ -307,7 +373,7 @@ export default function CalendarPage() {
       {viewMode === 'month' ? (
         <MonthGrid
           grid={monthGrid}
-          courses={courses}
+          courses={visibleCourses}
           colorPrefs={colorPrefs}
           hoveredCourseId={hoveredCourseId}
           onDayClick={(date) => setModalState({ initialDate: date })}
@@ -322,7 +388,7 @@ export default function CalendarPage() {
             <WeekGrid
               key={toISODate(weekDays[0])}
               weekDays={weekDays}
-              courses={courses}
+              courses={visibleCourses}
               barFields={barFields}
               colorPrefs={colorPrefs}
               attrColumns={attrColumns}
@@ -381,7 +447,7 @@ export default function CalendarPage() {
               <button className="icon-btn" onClick={() => setDayDetail(null)}>✕</button>
             </div>
             <div className="day-detail-list">
-              {coursesForDay(courses, dayDetail).map((c) => {
+              {coursesForDay(visibleCourses, dayDetail).map((c) => {
                 const style = getBarStyle(c, colorPrefs)
                 return (
                   <div
