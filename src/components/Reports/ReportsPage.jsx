@@ -58,6 +58,25 @@ export default function ReportsPage() {
     setFilters((f) => ({ ...f, [key]: value }))
   }
 
+  function resetFilters() {
+    setFilters({
+      startDate: toISODate(startOfMonth(new Date())),
+      endDate: toISODate(endOfMonth(new Date())),
+      trainer: '',
+      room: '',
+      courseType: '',
+      responsible: '',
+      category: '',
+      targetAudience: '',
+      search: '',
+      onlyTbd: false,
+    })
+    // rezultatele afisate nu mai corespund filtrelor (acum goale) - le
+    // ascundem, ca sa nu para ca lista de mai jos reflecta filtrele resetate
+    setResults(null)
+    setError('')
+  }
+
   async function runSearch(e) {
     e?.preventDefault()
     setLoading(true)
@@ -199,6 +218,9 @@ export default function ReportsPage() {
           Doar neclarificate (TBD)
         </label>
         <button type="submit" disabled={loading}>{loading ? 'Se cauta...' : 'Cauta'}</button>
+        <button type="button" className="secondary-btn" onClick={resetFilters} disabled={loading}>
+          Reseteaza filtre
+        </button>
       </form>
 
       {error && <div className="auth-error">{error}</div>}
