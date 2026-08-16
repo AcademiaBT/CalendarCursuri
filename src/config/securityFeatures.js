@@ -29,11 +29,6 @@ export const SECURITY_FEATURES = {
   mfa: false,
 }
 
-// Daca oricare dintre cele doua e activata, sectiunea "Schimba parola" din
-// Setari devine vizibila (altfel n-ar avea sens sa apara)
-export const PASSWORD_SECTION_VISIBLE =
-  SECURITY_FEATURES.passwordPolicy || SECURITY_FEATURES.passwordExpiry
-
 // ------------------------------------------------------------
 // Politica de complexitate a parolei (folosita doar daca
 // SECURITY_FEATURES.passwordPolicy === true)

@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { BAR_FIELD_OPTIONS, ATTRIBUTE_COLUMN_OPTIONS } from '../Calendar/WeekGrid'
 import { DURATION_LEGEND, colorKeyFor, DEFAULT_NEUTRAL_GRAY } from '../../utils/colors'
 import useNavbarOffset from '../../hooks/useNavbarOffset'
-import { SECURITY_FEATURES, PASSWORD_SECTION_VISIBLE } from '../../config/securityFeatures'
+import { SECURITY_FEATURES } from '../../config/securityFeatures'
 import ChangePasswordSection from './ChangePasswordSection'
 import MfaSection from './MfaSection'
 
@@ -184,7 +184,7 @@ export default function SettingsPage() {
         dispozitiv de pe care te loghezi.
       </p>
 
-      {PASSWORD_SECTION_VISIBLE && <ChangePasswordSection />}
+      <ChangePasswordSection />
       {SECURITY_FEATURES.mfa && <MfaSection />}
 
       <div className="admin-section">

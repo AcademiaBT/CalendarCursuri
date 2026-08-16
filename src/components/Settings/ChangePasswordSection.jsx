@@ -4,9 +4,10 @@ import { useAuth } from '../../contexts/AuthContext'
 import { SECURITY_FEATURES, PASSWORD_POLICY } from '../../config/securityFeatures'
 import { validatePassword } from '../../utils/passwordValidation'
 
-// Formular de schimbare a parolei, disponibil in Setari. Randat doar din
-// SettingsPage, cand PASSWORD_SECTION_VISIBLE e adevarat (adica cel putin
-// una dintre functiile "complexitate parola" / "expirare parola" e activa).
+// Formular de schimbare a parolei, disponibil in Setari pentru orice user
+// (functie de baza, mereu vizibila). Daca SECURITY_FEATURES.passwordPolicy
+// e activ, adauga si validarea de complexitate (PASSWORD_POLICY) - altfel,
+// accepta orice parola noua (limitata doar de regulile din Supabase Dashboard).
 export default function ChangePasswordSection() {
   const { updatePreferences } = useAuth()
   const [newPassword, setNewPassword] = useState('')
