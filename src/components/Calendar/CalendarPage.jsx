@@ -14,6 +14,7 @@ import CourseModal from './CourseModal'
 import MonthGrid from './MonthGrid'
 import WeekGrid, { DEFAULT_DAYS_BLOCK_WIDTH, DEFAULT_ATTR_COL_WIDTH, DEFAULT_ROW_HEIGHT } from './WeekGrid'
 import TbdAlertModal from './TbdAlertModal'
+import HelpTooltip from '../HelpTooltip'
 import { suppressNextGhostClick } from '../../utils/dragHelpers'
 
 // Cate saptamani afisam stivuite, unele sub altele, in vizualizarea
@@ -234,12 +235,10 @@ export default function CalendarPage() {
               ⠿
             </span>
             <button className="reorder-btn" onClick={() => adjustRowHeight(6)} disabled={rowHeight >= 72}>+</button>
-            <span className="help-tooltip" tabIndex={0}>
-              <span className="help-tooltip-icon">?</span>
-              <span className="help-tooltip-text">
-                Trage de puncte (⠿) pentru a ajusta liber inaltimea randurilor, sau apasa − / + pentru pasi fixi.
-              </span>
-            </span>
+            <HelpTooltip
+              align="right"
+              text="Trage de puncte (⠿) pentru a ajusta liber inaltimea randurilor, sau apasa − / + pentru pasi fixi."
+            />
           </div>
         )}
 
@@ -273,6 +272,12 @@ export default function CalendarPage() {
           ))
         ) : (
           <>
+            {hasUnclarified && (
+              <span className="legend-item" title="Fundal gri neutru, cu eticheta TBD in rosu, direct pe bara">
+                <span className="legend-swatch" style={{ background: '#8a94a630', borderColor: '#8a94a6' }} />
+                Neclarificat — <span className="unclarified-badge">TBD</span>
+              </span>
+            )}
             {legendValues.map((value) => {
               const hex = colorPrefs.customColors[colorKeyFor(colorPrefs.colorMode, value)] || DEFAULT_NEUTRAL_GRAY
               const style = styleFromHex(hex)
@@ -283,12 +288,6 @@ export default function CalendarPage() {
                 </span>
               )
             })}
-            {hasUnclarified && (
-              <span className="legend-item" title="Fundal gri neutru, cu eticheta TBD in rosu, direct pe bara">
-                <span className="legend-swatch" style={{ background: '#8a94a630', borderColor: '#8a94a6' }} />
-                Neclarificat — <span className="unclarified-badge">TBD</span>
-              </span>
-            )}
             {legendValues.length === 0 && !hasUnclarified && (
               <span className="legend-item legend-note">Niciun curs momentan.</span>
             )}
@@ -394,7 +393,7 @@ export default function CalendarPage() {
                       setModalState({ course: c })
                     }}
                   >
-                    <div className="day-detail-item-title">
+                    <div className="day-detail-item-title" style={style.unclarified ? { color: style.text } : undefined}>
                       <strong>{c.start_time?.slice(0, 5) || ''}</strong> {c.name}
                       {style.unclarified && <span className="unclarified-badge">TBD</span>}
                     </div>

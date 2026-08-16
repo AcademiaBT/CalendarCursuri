@@ -8,8 +8,9 @@ import useNavbarOffset from '../../hooks/useNavbarOffset'
 // La logare, atentioneaza userul despre doua categorii de cursuri apropiate:
 // 1) cursurile pentru care userul e "responsabil" (Setari) si care inca au
 //    trainer/sala TBD - vizibil doar celui responsabil
-// 2) cursuri fara niciun responsabil stabilit (responsible = "TBD") - astea
-//    se arata TUTUROR userilor, pana cineva stabileste un responsabil
+// 2) cursuri fara niciun responsabil stabilit (responsible = "TBD", sau gol/
+//    null) - astea se arata TUTUROR userilor, pana cineva stabileste un
+//    responsabil
 // Click pe un curs il deschide direct pentru editare, iar alerta se
 // micsoreaza intr-un colet (nu dispare de tot), ca userul sa nu piarda din
 // vedere ca mai are de rezolvat, in timp ce le clarifica pe rand. Dispare
@@ -43,19 +44,22 @@ export default function TbdAlertModal({ profile, refreshKey, onEditCourse }) {
           .from('courses')
           .select('*')
           .eq('responsible', profile.responsible_name)
-          .gte('start_date', todayIso)
+          .gte('end_date', todayIso)
           .lte('start_date', untilIso)
           .or('trainer.eq.TBD,room.eq.TBD')
       )
     }
 
-    // cursuri fara responsabil stabilit - vizibile pentru orice user logat
+    // cursuri fara responsabil stabilit - vizibile pentru orice user logat.
+    // prinde atat valoarea literala "TBD", cat si cazul cand campul e gol/
+    // null (cursuri introduse fara sa treaca prin formular, ex. import) -
+    // ambele inseamna "nimeni nu e responsabil inca".
     queries.push(
       supabase
         .from('courses')
         .select('*')
-        .eq('responsible', 'TBD')
-        .gte('start_date', todayIso)
+        .or('responsible.eq.TBD,responsible.is.null,responsible.eq.')
+        .gte('end_date', todayIso)
         .lte('start_date', untilIso)
     )
 
@@ -77,7 +81,7 @@ export default function TbdAlertModal({ profile, refreshKey, onEditCourse }) {
     const missing = []
     if (c.trainer === 'TBD') missing.push('Trainer')
     if (c.room === 'TBD') missing.push('Sala')
-    if (c.responsible === 'TBD') missing.push('Responsabil')
+    if (!c.responsible || c.responsible === 'TBD') missing.push('Responsabil')
     return missing
   }
 

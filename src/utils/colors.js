@@ -54,6 +54,11 @@ export function styleFromHex(hex) {
 // prea deschis, nici prea inchis.
 export const DEFAULT_NEUTRAL_GRAY = '#8a94a6'
 
+// text rosu pentru cursurile neclarificate (responsabil/categorie lipsa) -
+// acelasi rosu ca --danger din index.css, ca sa fie evident dintr-o privire
+// ca acel curs are nevoie de atentie, nu doar eticheta "TBD" separat
+const UNCLARIFIED_TEXT_COLOR = '#dc3545'
+
 // Cheia sub care se salveaza o culoare personalizata in profile.custom_colors
 export function colorKeyFor(mode, value) {
   return `${mode}:${value}`
@@ -76,7 +81,7 @@ export function getBarStyle(course, prefs = {}) {
       const key = colorKeyFor('responsible', course.responsible)
       return { ...styleFromHex(customColors[key] || DEFAULT_NEUTRAL_GRAY), unclarified: false }
     }
-    return { ...styleFromHex(DEFAULT_NEUTRAL_GRAY), unclarified: true }
+    return { ...styleFromHex(DEFAULT_NEUTRAL_GRAY), unclarified: true, text: UNCLARIFIED_TEXT_COLOR }
   }
 
   if (colorMode === 'category') {
@@ -84,7 +89,7 @@ export function getBarStyle(course, prefs = {}) {
       const key = colorKeyFor('category', course.course_area)
       return { ...styleFromHex(customColors[key] || DEFAULT_NEUTRAL_GRAY), unclarified: false }
     }
-    return { ...styleFromHex(DEFAULT_NEUTRAL_GRAY), unclarified: true }
+    return { ...styleFromHex(DEFAULT_NEUTRAL_GRAY), unclarified: true, text: UNCLARIFIED_TEXT_COLOR }
   }
 
   const bucket = getDurationStyle(course.start_date, course.end_date)

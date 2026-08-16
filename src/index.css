@@ -160,17 +160,18 @@ input:focus, select:focus, textarea:focus {
 }
 .row-height-drag-handle:hover, .row-height-drag-handle:active { color: var(--accent); }
 
-/* iconita de ajutor "?" cu tooltip - functioneaza la hover (desktop) SI la
-   tap/focus (mobil, unde title-ul nativ nu apare deloc la atingere) */
+/* iconita de ajutor "?" cu tooltip - deschisa/inchisa explicit prin click
+   (vezi HelpTooltip.jsx), nu prin hover/focus, care ramanea agatata deschisa
+   dupa un tap pe mobil */
 .help-tooltip {
   position: relative;
   display: inline-flex;
-  outline: none;
 }
 .help-tooltip-icon {
   width: 18px;
   height: 18px;
   border-radius: 50%;
+  border: none;
   background: var(--border);
   color: var(--text-muted);
   font-size: 11px;
@@ -178,12 +179,13 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: help;
+  cursor: pointer;
+  padding: 0;
 }
+.help-tooltip-icon:hover { background: var(--accent-soft); color: var(--accent); }
 .help-tooltip-text {
   position: absolute;
   bottom: calc(100% + 8px);
-  left: 0;
   width: 220px;
   background: var(--navy);
   color: white;
@@ -193,18 +195,13 @@ input:focus, select:focus, textarea:focus {
   padding: 8px 10px;
   border-radius: 6px;
   box-shadow: 0 6px 16px rgba(0,0,0,0.2);
-  opacity: 0;
-  transform: translateY(4px);
-  pointer-events: none;
-  transition: opacity 0.15s ease, transform 0.15s ease;
   z-index: 60;
 }
-.help-tooltip:hover .help-tooltip-text,
-.help-tooltip:focus .help-tooltip-text,
-.help-tooltip:focus-within .help-tooltip-text {
-  opacity: 1;
-  transform: translateY(0);
-}
+/* implicit, caseta se deschide spre dreapta iconitei (aliniata la stanga ei) */
+.help-tooltip-left .help-tooltip-text { left: 0; }
+/* varianta pentru cand iconita e aproape de marginea dreapta a ecranului -
+   caseta se deschide spre stanga, ca sa nu iasa din fereastra */
+.help-tooltip-right .help-tooltip-text { right: 0; }
 
 .view-mode-toggle {
   display: flex;
