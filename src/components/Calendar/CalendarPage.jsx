@@ -329,36 +329,44 @@ export default function CalendarPage() {
         </label>
 
         {allLegendKeys.length > 0 && (
-          <button
-            className="link-btn legend-reset"
-            onClick={hiddenLegendKeys.size > 0 ? showAllLegend : hideAllLegend}
-          >
+          <label className="legend-item legend-select-all" title="Arata/ascunde tot dintr-o data">
+            <input
+              type="checkbox"
+              checked={hiddenLegendKeys.size === 0}
+              onChange={() => (hiddenLegendKeys.size > 0 ? showAllLegend() : hideAllLegend())}
+            />
             {hiddenLegendKeys.size > 0 ? 'arată tot' : 'ascunde tot'}
-          </button>
+          </label>
         )}
 
         {colorPrefs.colorMode === 'duration' ? (
           DURATION_LEGEND.map((l) => (
-            <label key={l.key} className="legend-item legend-item-checkbox">
+            <label
+              key={l.key}
+              className="legend-item legend-item-checkbox legend-pill"
+              style={{ background: l.bg, borderColor: l.border, color: '#20263a' }}
+            >
               <input
                 type="checkbox"
                 checked={!hiddenLegendKeys.has(l.key)}
                 onChange={() => toggleLegendKey(l.key)}
               />
-              <span className="legend-swatch" style={{ background: l.bg, borderColor: l.border }} />
               {l.label}
             </label>
           ))
         ) : (
           <>
             {hasUnclarified && (
-              <label className="legend-item legend-item-checkbox" title="Fundal gri neutru, cu eticheta TBD in rosu, direct pe bara">
+              <label
+                className="legend-item legend-item-checkbox legend-pill"
+                style={{ background: '#8a94a630', borderColor: '#8a94a6' }}
+                title="Fundal gri neutru, cu eticheta TBD in rosu, direct pe bara"
+              >
                 <input
                   type="checkbox"
                   checked={!hiddenLegendKeys.has(UNCLARIFIED_LEGEND_KEY)}
                   onChange={() => toggleLegendKey(UNCLARIFIED_LEGEND_KEY)}
                 />
-                <span className="legend-swatch" style={{ background: '#8a94a630', borderColor: '#8a94a6' }} />
                 <span className="unclarified-badge">TBD</span>
               </label>
             )}
@@ -366,13 +374,16 @@ export default function CalendarPage() {
               const hex = colorPrefs.customColors[colorKeyFor(colorPrefs.colorMode, value)] || DEFAULT_NEUTRAL_GRAY
               const style = styleFromHex(hex)
               return (
-                <label key={value} className="legend-item legend-item-checkbox">
+                <label
+                  key={value}
+                  className="legend-item legend-item-checkbox legend-pill"
+                  style={{ background: style.bg, borderColor: style.border, color: style.text }}
+                >
                   <input
                     type="checkbox"
                     checked={!hiddenLegendKeys.has(value)}
                     onChange={() => toggleLegendKey(value)}
                   />
-                  <span className="legend-swatch" style={{ background: style.bg, borderColor: style.border }} />
                   {value}
                 </label>
               )
