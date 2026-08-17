@@ -37,13 +37,15 @@ export default function TbdAlertModal({ profile, refreshKey, onEditCourse }) {
 
     const queries = []
 
-    // cursurile mele, cu trainer/sala inca nedecise
-    if (profile?.responsible_name) {
+    // cursurile mele, cu trainer/sala inca nedecise - userul poate fi legat
+    // de mai multi responsabili deodata (responsible_names e o lista)
+    const myResponsibleNames = profile?.responsible_names || []
+    if (myResponsibleNames.length > 0) {
       queries.push(
         supabase
           .from('courses')
           .select('*')
-          .eq('responsible', profile.responsible_name)
+          .in('responsible', myResponsibleNames)
           .gte('end_date', todayIso)
           .lte('start_date', untilIso)
           .or('trainer.eq.TBD,room.eq.TBD')
@@ -72,7 +74,7 @@ export default function TbdAlertModal({ profile, refreshKey, onEditCourse }) {
       setPendingCourses([...merged.values()].sort((a, b) => a.start_date.localeCompare(b.start_date)))
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.responsible_name, profile?.notify_days_ahead, refreshKey])
+  }, [JSON.stringify(profile?.responsible_names), profile?.notify_days_ahead, refreshKey])
 
   if (dismissed) return null
   if (!pendingCourses || pendingCourses.length === 0) return null

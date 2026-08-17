@@ -55,12 +55,12 @@ const emptyForm = (startDate, defaultResponsible) => ({
 
 export default function CourseModal({ initialDate, course, onClose, onSaved }) {
   const { user, profile, isAdmin } = useAuth()
-  // la un curs nou, implicit responsabilul e chiar userul logat (daca are
-  // stabilita corespondenta cu lista "Responsabili", din Administrare ->
-  // Useri) - ramane insa un dropdown normal, editabil, inclusiv inapoi la
-  // TBD, daca de fapt nu userul curent e responsabilul potrivit
+  // la un curs nou, implicit responsabilul e chiar userul logat (primul din
+  // lista lui, daca are mai multi asociati - vezi Administrare -> Useri) -
+  // ramane insa un dropdown normal, editabil, inclusiv inapoi la TBD, daca
+  // de fapt nu userul curent e responsabilul potrivit
   const [form, setForm] = useState(
-    course ? pickFormFields(course) : emptyForm(toISODate(initialDate), profile?.responsible_name)
+    course ? pickFormFields(course) : emptyForm(toISODate(initialDate), profile?.responsible_names?.[0])
   )
   const [trainers, setTrainers] = useState([])
   const [rooms, setRooms] = useState([])

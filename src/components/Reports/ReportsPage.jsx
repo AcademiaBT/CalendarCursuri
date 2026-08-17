@@ -255,6 +255,13 @@ export default function ReportsPage() {
               >
                 Descarca Excel
               </button>
+              <button
+                disabled={results.length === 0}
+                className="secondary-btn"
+                onClick={() => window.print()}
+              >
+                🖨️ Printeaza
+              </button>
             </div>
           </div>
 
@@ -443,6 +450,9 @@ function StatsView({ stats, filtersLabel }) {
         </button>
         <button className="secondary-btn" onClick={() => exportStatsToXlsx(stats, { filtersLabel })}>
           Descarcă statistici (Excel)
+        </button>
+        <button className="secondary-btn" onClick={() => window.print()}>
+          🖨️ Printeaza
         </button>
       </div>
     </div>

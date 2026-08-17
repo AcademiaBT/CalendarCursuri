@@ -437,6 +437,9 @@ input:focus, select:focus, textarea:focus {
 .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .admin-table th { text-align: left; color: var(--text-muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--border); }
 .admin-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); }
+.user-responsible-checks { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.user-responsible-check { display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; white-space: nowrap; }
+.user-responsible-check input[type="checkbox"] { margin: 0; cursor: pointer; }
 .row-inactive { opacity: 0.5; }
 
 /* ---------- Reports ---------- */
@@ -727,5 +730,24 @@ input:focus, select:focus, textarea:focus {
 
   /* alerta TBD minimizata: pe mobil, mai mica, ca sa incapa usor centrata */
   .tbd-alert-badge { font-size: 12px; padding: 8px 12px; }
+}
+
+/* ---------- Printare (pagina Rapoarte) ---------- */
+@media print {
+  /* ascunde tot ce n-are sens pe hartie: navigatia, filtrele, butoanele de
+     comutare/export - ramane doar continutul propriu-zis al raportului
+     (titlu, numar de rezultate, tabelul sau statisticile) */
+  .navbar,
+  .reports-filters,
+  .view-mode-toggle,
+  .reports-actions,
+  .tbd-alert-badge,
+  .floating-save-bar {
+    display: none !important;
+  }
+  body, .app-shell, .app-main { background: white !important; }
+  .admin-table { font-size: 11px; }
+  .stats-summary-card { background: white !important; color: black !important; border: 1px solid #ccc; }
+  .stats-card { break-inside: avoid; border: 1px solid #ccc; }
 }
 

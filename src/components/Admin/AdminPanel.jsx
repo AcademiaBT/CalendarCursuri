@@ -210,6 +210,15 @@ function UsersManager() {
     else load()
   }
 
+  // userul poate fi legat de mai multi responsabili deodata (ex: cineva
+  // care acopera si rolul altcuiva) - bifarea/debifarea unui nume actualizeaza
+  // direct lista din baza de date
+  function toggleResponsibleName(item, name) {
+    const current = item.responsible_names || []
+    const next = current.includes(name) ? current.filter((n) => n !== name) : [...current, name]
+    saveField(item.id, 'responsible_names', next)
+  }
+
   function handleRoleChange(item, newRole) {
     if (item.id === currentUser?.id && newRole !== 'admin') {
       if (!confirm('Iti retragi singur rolul de admin. Nu vei mai putea reveni aici fara ajutorul altui admin. Esti sigur?')) return
@@ -233,7 +242,7 @@ function UsersManager() {
           <tr>
             <th>Email</th>
             <th>Rol</th>
-            <th>Responsabil corespunzator</th>
+            <th>Responsabili corespunzatori</th>
           </tr>
         </thead>
         <tbody>
@@ -247,16 +256,22 @@ function UsersManager() {
                 </select>
               </td>
               <td>
-                <select
-                  value={item.responsible_name || ''}
-                  onChange={(e) => saveField(item.id, 'responsible_name', e.target.value || null)}
-                  style={{ minWidth: 160 }}
-                >
-                  <option value="">-- niciunul --</option>
-                  {responsibleOptions.map((r) => (
-                    <option key={r.id} value={r.name}>{r.name}</option>
-                  ))}
-                </select>
+                {responsibleOptions.length === 0 ? (
+                  <span className="admin-hint">Niciun responsabil activ in lista.</span>
+                ) : (
+                  <div className="user-responsible-checks">
+                    {responsibleOptions.map((r) => (
+                      <label key={r.id} className="user-responsible-check">
+                        <input
+                          type="checkbox"
+                          checked={(item.responsible_names || []).includes(r.name)}
+                          onChange={() => toggleResponsibleName(item, r.name)}
+                        />
+                        {r.name}
+                      </label>
+                    ))}
+                  </div>
+                )}
               </td>
             </tr>
           ))}

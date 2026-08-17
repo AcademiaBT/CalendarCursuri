@@ -24,7 +24,7 @@ export default function SettingsPage() {
   const [customColors, setCustomColors] = useState(profile?.custom_colors || {})
   const [distinctCategories, setDistinctCategories] = useState([])
   const [responsiblePersonsList, setResponsiblePersonsList] = useState([])
-  // "responsible_name" nu mai e editabil de aici - se seteaza acum central,
+  // "responsible_names" nu mai e editabil de aici - se seteaza acum central,
   // de admin, din Administrare -> Useri (vezi corespondenta user <-> email)
   const [notifyDaysAhead, setNotifyDaysAhead] = useState(profile?.notify_days_ahead ?? 7)
   // alertele TBD sunt active daca notify_days_ahead nu e null in baza de
@@ -196,8 +196,8 @@ export default function SettingsPage() {
 
         <div style={{ marginBottom: 14 }}>
           <div className="admin-hint" style={{ marginBottom: 4 }}>Numele tău din lista "Responsabili"</div>
-          {profile?.responsible_name ? (
-            <strong>{profile.responsible_name}</strong>
+          {profile?.responsible_names?.length > 0 ? (
+            <strong>{profile.responsible_names.join(', ')}</strong>
           ) : (
             <span className="admin-hint">Nesetat — cere unui admin să-l configureze din Administrare → Useri.</span>
           )}
