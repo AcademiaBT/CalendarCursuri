@@ -74,6 +74,18 @@ function comboHint(rawValue, list, { withCapacity = false } = {}) {
   return null
 }
 
+// acelasi indiciu discret, dar pentru campuri text libere, FARA lista
+// gestionata in spate (Arie curs/categorie, Public tinta) - nu se "creeaza"
+// nimic separat la salvare (valoarea se scrie direct pe curs), deci
+// formularea difera de comboHint (care are efect real intr-o lista din
+// Administrare)
+function freeTextHint(rawValue, options) {
+  const value = (rawValue || '').trim()
+  if (!value) return null
+  const exists = options.some((o) => o.trim().toLowerCase() === value.toLowerCase())
+  return exists ? null : 'valoare noua'
+}
+
 export default function CourseModal({ initialDate, course, onClose, onSaved }) {
   const { user, profile, isAdmin } = useAuth()
   // la un curs nou, implicit responsabilul e chiar userul logat (primul din
@@ -444,6 +456,9 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
             <datalist id="category-options">
               {categoryOptions.map((c) => <option key={c} value={c} />)}
             </datalist>
+            {freeTextHint(form.course_area, categoryOptions) && (
+              <span className="combo-hint">{freeTextHint(form.course_area, categoryOptions)}</span>
+            )}
           </label>
 
           <label>
@@ -461,6 +476,9 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
             <datalist id="audience-options">
               {audienceOptions.map((a) => <option key={a} value={a} />)}
             </datalist>
+            {freeTextHint(form.target_audience, audienceOptions) && (
+              <span className="combo-hint">{freeTextHint(form.target_audience, audienceOptions)}</span>
+            )}
           </label>
 
           <label className="span-2">
