@@ -189,7 +189,7 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
         if (trainerConflict) {
           messages.push(`Trainerul "${form.trainer}" e deja programat in aceasta perioada la cursul "${trainerConflict.name}".`)
         }
-        setConflictWarning(messages.join(' '))
+        setConflictWarning(messages.join('\n'))
       } catch {
         // esec silentios aici - verificarea definitiva e cea din handleSubmit
       }
@@ -254,7 +254,7 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
       }
 
       if (conflictMessages.length > 0) {
-        setError(conflictMessages.join(' ') + ' Alege alta sala/trainer sau alt interval.')
+        setError(conflictMessages.join('\n') + '\nAlege alta sala/trainer sau alt interval.')
         setBusy(false)
         return
       }
