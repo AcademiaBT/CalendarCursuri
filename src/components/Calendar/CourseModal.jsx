@@ -150,7 +150,10 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
     let query = supabase
       .from('courses')
       .select('id, name, start_date, end_date, start_time, end_time')
-      .eq(field, value)
+      // ilike (nu eq) - case-insensitive, ca "arad" scris cu minuscule sa
+      // gaseasca la fel de bine conflictul cu "Arad" deja existent in baza
+      // de date, indiferent cum a fost scrisa valoarea in formular
+      .ilike(field, value)
       .lte('start_date', form.end_date)
       .gte('end_date', form.start_date)
 
