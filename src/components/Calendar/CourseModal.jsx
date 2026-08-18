@@ -180,17 +180,16 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
     }
     const timeout = setTimeout(async () => {
       try {
+        const messages = []
         const roomConflict = await findFieldConflict('room', form.room)
         if (roomConflict) {
-          setConflictWarning(`Sala "${form.room}" e deja rezervata in aceasta perioada de cursul "${roomConflict.name}".`)
-          return
+          messages.push(`Sala "${form.room}" e deja rezervata in aceasta perioada de cursul "${roomConflict.name}".`)
         }
         const trainerConflict = await findFieldConflict('trainer', form.trainer)
         if (trainerConflict) {
-          setConflictWarning(`Trainerul "${form.trainer}" e deja programat in aceasta perioada la cursul "${trainerConflict.name}".`)
-          return
+          messages.push(`Trainerul "${form.trainer}" e deja programat in aceasta perioada la cursul "${trainerConflict.name}".`)
         }
-        setConflictWarning('')
+        setConflictWarning(messages.join(' '))
       } catch {
         // esec silentios aici - verificarea definitiva e cea din handleSubmit
       }
@@ -236,24 +235,26 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
     }
 
     try {
+      const conflictMessages = []
+
       const roomConflict = await findFieldConflict('room', roomName)
       if (roomConflict) {
-        setError(
+        conflictMessages.push(
           `Sala "${roomName}" este deja rezervata in aceasta perioada de cursul "${roomConflict.name}" ` +
-          `(${roomConflict.start_date} - ${roomConflict.end_date}${roomConflict.start_time ? `, ${roomConflict.start_time.slice(0, 5)}-${roomConflict.end_time?.slice(0, 5)}` : ''}). ` +
-          `Alege alta sala sau alt interval.`
+          `(${roomConflict.start_date} - ${roomConflict.end_date}${roomConflict.start_time ? `, ${roomConflict.start_time.slice(0, 5)}-${roomConflict.end_time?.slice(0, 5)}` : ''}).`
         )
-        setBusy(false)
-        return
       }
 
       const trainerConflict = await findFieldConflict('trainer', trainerName)
       if (trainerConflict) {
-        setError(
+        conflictMessages.push(
           `Trainerul "${trainerName}" este deja programat in aceasta perioada la cursul "${trainerConflict.name}" ` +
-          `(${trainerConflict.start_date} - ${trainerConflict.end_date}${trainerConflict.start_time ? `, ${trainerConflict.start_time.slice(0, 5)}-${trainerConflict.end_time?.slice(0, 5)}` : ''}). ` +
-          `Alege alt trainer sau alt interval.`
+          `(${trainerConflict.start_date} - ${trainerConflict.end_date}${trainerConflict.start_time ? `, ${trainerConflict.start_time.slice(0, 5)}-${trainerConflict.end_time?.slice(0, 5)}` : ''}).`
         )
+      }
+
+      if (conflictMessages.length > 0) {
+        setError(conflictMessages.join(' ') + ' Alege alta sala/trainer sau alt interval.')
         setBusy(false)
         return
       }
