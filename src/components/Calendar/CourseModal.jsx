@@ -84,7 +84,7 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
     course ? pickFormFields(course) : emptyForm(toISODate(initialDate), profile?.responsible_names?.[0])
   )
   const [sameDayCourse, setSameDayCourse] = useState(
-    course ? course.start_date === course.end_date : true
+    course ? course.start_date === course.end_date : false
   )
   const [trainers, setTrainers] = useState([])
   const [rooms, setRooms] = useState([])
@@ -310,23 +310,37 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
             <input required disabled={!canEdit} value={form.name} onChange={(e) => update('name', e.target.value)} />
           </label>
 
-          <label className="span-2-of-3">
+          <label>
             Data + ora start *
             <div className="datetime-row">
               <DateInputRO required disabled={!canEdit} value={form.start_date} onChange={updateStartDate} />
               <input type="time" disabled={!canEdit} value={form.start_time || ''} onChange={(e) => update('start_time', e.target.value)} />
             </div>
           </label>
+          <label className="same-day-toggle">
+            <span>&nbsp;</span>
+            <span className="same-day-toggle-inner">
+              <input
+                type="checkbox"
+                disabled={!canEdit}
+                checked={sameDayCourse}
+                onChange={(e) => toggleSameDayCourse(e.target.checked)}
+              />
+              curs de o zi
+            </span>
+          </label>
           <label>
             Trainer *
-            <input
-              list="trainer-options"
-              required
-              disabled={!canEdit}
-              autoComplete="off"
-              value={form.trainer || ''}
-              onChange={(e) => update('trainer', e.target.value)}
-            />
+            <div className="combo-field">
+              <input
+                list="trainer-options"
+                required
+                disabled={!canEdit}
+                autoComplete="off"
+                value={form.trainer || ''}
+                onChange={(e) => update('trainer', e.target.value)}
+              />
+            </div>
             <datalist id="trainer-options">
               {trainerNames.map((n) => <option key={n} value={n} />)}
             </datalist>
@@ -335,19 +349,8 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
             )}
           </label>
 
-          <label className="span-2-of-3">
-            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              Data + ora sfarsit *
-              <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 400, fontSize: 12, cursor: canEdit ? 'pointer' : 'default' }}>
-                <input
-                  type="checkbox"
-                  disabled={!canEdit}
-                  checked={sameDayCourse}
-                  onChange={(e) => toggleSameDayCourse(e.target.checked)}
-                />
-                curs de o zi
-              </label>
-            </span>
+          <label>
+            Data + ora sfarsit *
             <div className="datetime-row">
               <DateInputRO
                 required
@@ -358,16 +361,19 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
               <input type="time" disabled={!canEdit} value={form.end_time || ''} onChange={(e) => update('end_time', e.target.value)} />
             </div>
           </label>
+          <div className="same-day-spacer" />
           <label>
             Sala *
-            <input
-              list="room-options"
-              required
-              disabled={!canEdit}
-              autoComplete="off"
-              value={form.room || ''}
-              onChange={(e) => update('room', e.target.value)}
-            />
+            <div className="combo-field">
+              <input
+                list="room-options"
+                required
+                disabled={!canEdit}
+                autoComplete="off"
+                value={form.room || ''}
+                onChange={(e) => update('room', e.target.value)}
+              />
+            </div>
             <datalist id="room-options">
               {roomNames.map((n) => <option key={n} value={n} />)}
             </datalist>
@@ -395,14 +401,16 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
 
           <label>
             Responsabil *
-            <input
-              list="responsible-options"
-              required
-              disabled={!canEdit}
-              autoComplete="off"
-              value={form.responsible || ''}
-              onChange={(e) => update('responsible', e.target.value)}
-            />
+            <div className="combo-field">
+              <input
+                list="responsible-options"
+                required
+                disabled={!canEdit}
+                autoComplete="off"
+                value={form.responsible || ''}
+                onChange={(e) => update('responsible', e.target.value)}
+              />
+            </div>
             <datalist id="responsible-options">
               {responsibleNames.map((n) => <option key={n} value={n} />)}
             </datalist>
@@ -423,14 +431,16 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
 
           <label>
             Arie curs / categorie
-            <input
-              list="category-options"
-              disabled={!canEdit}
-              autoComplete="off"
-              value={form.course_area || ''}
-              onChange={(e) => update('course_area', e.target.value)}
-              placeholder="ex: Soft skills, Tehnic, Conformitate"
-            />
+            <div className="combo-field">
+              <input
+                list="category-options"
+                disabled={!canEdit}
+                autoComplete="off"
+                value={form.course_area || ''}
+                onChange={(e) => update('course_area', e.target.value)}
+                placeholder="ex: Soft skills, Tehnic, Conformitate"
+              />
+            </div>
             <datalist id="category-options">
               {categoryOptions.map((c) => <option key={c} value={c} />)}
             </datalist>
@@ -438,14 +448,16 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
 
           <label>
             Public tinta
-            <input
-              list="audience-options"
-              disabled={!canEdit}
-              autoComplete="off"
-              value={form.target_audience || ''}
-              onChange={(e) => update('target_audience', e.target.value)}
-              placeholder="ex: Manageri, Noi angajati"
-            />
+            <div className="combo-field">
+              <input
+                list="audience-options"
+                disabled={!canEdit}
+                autoComplete="off"
+                value={form.target_audience || ''}
+                onChange={(e) => update('target_audience', e.target.value)}
+                placeholder="ex: Manageri, Noi angajati"
+              />
+            </div>
             <datalist id="audience-options">
               {audienceOptions.map((a) => <option key={a} value={a} />)}
             </datalist>

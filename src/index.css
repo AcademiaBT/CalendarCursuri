@@ -412,6 +412,25 @@ input:focus, select:focus, textarea:focus {
 .course-form label { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; font-weight: 600; color: var(--text-muted); }
 .course-form input, .course-form select, .course-form textarea { padding: 7px 9px; }
 .combo-hint { font-size: 10.5px; font-weight: 500; color: var(--text-muted); }
+
+/* combobox (input + datalist): fara sageata vizuala, un input text obisnuit
+   nu lasa de inteles ca poti vedea toate optiunile fara sa tastezi nimic -
+   adaugam o sageata decorativa, ca la un <select>, doar vizuala (clic
+   oriunde pe camp deschide lista de sugestii, browser-ul se ocupa de asta) */
+.combo-field { position: relative; }
+.combo-field input { padding-right: 26px; width: 100%; box-sizing: border-box; }
+.combo-field::after {
+  content: '';
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--text-muted);
+  border-bottom: 2px solid var(--text-muted);
+  transform: translateY(-70%) rotate(45deg);
+  pointer-events: none;
+}
 .form-warning {
   background: #fff3cd;
   color: #8a6d00;
@@ -426,6 +445,28 @@ input:focus, select:focus, textarea:focus {
 .datetime-row { display: flex; gap: 6px; }
 .datetime-row .date-input-ro-wrapper { flex: 1.4; min-width: 0; }
 .datetime-row input[type="time"] { flex: 1; min-width: 0; }
+
+/* coloana cu checkbox-ul "curs de o zi", langa data de start - aliniata pe
+   verticala cu celelalte campuri (eticheta invizibila &nbsp; ocupa acelasi
+   spatiu ca un label text real, ca inputul/checkbox-ul sa porneasca de la
+   aceeasi inaltime ca restul campurilor din rand) */
+.same-day-toggle span:first-child { visibility: hidden; }
+.same-day-toggle-inner {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--text);
+  height: 34px;
+  cursor: pointer;
+}
+.same-day-toggle-inner input[type="checkbox"] { margin: 0; cursor: pointer; }
+/* pe ecrane mai inguste, grila nu mai are 3 coloane - golul de aliniere de
+   langa Sala nu mai e necesar (elementele oricum se reordoneaza pe randuri) */
+@media (max-width: 899px) {
+  .same-day-spacer { display: none; }
+}
 .modal-actions { display: flex; gap: 10px; align-items: center; margin-top: 6px; }
 .modal-actions .spacer { flex: 1; }
 
