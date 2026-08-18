@@ -411,6 +411,16 @@ input:focus, select:focus, textarea:focus {
 .course-form { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 14px; }
 .course-form label { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; font-weight: 600; color: var(--text-muted); }
 .course-form input, .course-form select, .course-form textarea { padding: 7px 9px; }
+.combo-hint { font-size: 10.5px; font-weight: 500; color: var(--text-muted); }
+.form-warning {
+  background: #fff3cd;
+  color: #8a6d00;
+  border: 1px solid #f2c14e;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
 .span-2 { grid-column: 1 / -1; }
 .span-2-of-3 { grid-column: span 2; }
 .datetime-row { display: flex; gap: 6px; }

@@ -5,7 +5,6 @@ import { toISODate } from '../../utils/dateHelpers'
 import DateInputRO from '../DateInputRO'
 
 const COURSE_TYPES = ['TBD', 'live', 'online', 'blended', 'e-learning']
-const TBD_OPTION = { id: 'tbd', name: 'TBD', active: true }
 
 // Doar aceste campuri apartin formularului. Cursul incarcat din baza de date
 // (prin select('*')) mai contine si alte coloane - id, created_at, created_by,
@@ -53,19 +52,47 @@ const emptyForm = (startDate, defaultResponsible) => ({
   target_audience: '',
 })
 
+// gaseste elementul din lista (traineri/sali/responsabili) a carui nume se
+// potriveste cu valoarea data, ignorand majuscule/spatii - folosit atat
+// pentru afisarea unui indiciu langa camp, cat si la salvare
+function findMatch(list, rawValue) {
+  const value = (rawValue || '').trim().toLowerCase()
+  if (!value) return null
+  return list.find((item) => item.name.trim().toLowerCase() === value) || null
+}
+
+// indiciul aratat sub un combobox (Trainer/Sala/Responsabil): fie ca
+// valoarea scrisa e noua (va fi creata automat la salvare), fie ca e deja
+// in lista dar inactiva, fie (pentru sali) capacitatea, daca exista
+function comboHint(rawValue, list, { withCapacity = false } = {}) {
+  const value = (rawValue || '').trim()
+  if (!value || value === 'TBD') return null
+  const existing = findMatch(list, value)
+  if (!existing) return `nou — va fi adaugat automat in lista la salvare`
+  if (!existing.active) return `inactiv in lista (poate fi folosit oricum)`
+  if (withCapacity && existing.capacity) return `${existing.capacity} locuri`
+  return null
+}
+
 export default function CourseModal({ initialDate, course, onClose, onSaved }) {
   const { user, profile, isAdmin } = useAuth()
   // la un curs nou, implicit responsabilul e chiar userul logat (primul din
   // lista lui, daca are mai multi asociati - vezi Administrare -> Useri) -
-  // ramane insa un dropdown normal, editabil, inclusiv inapoi la TBD, daca
-  // de fapt nu userul curent e responsabilul potrivit
+  // ramane insa un camp normal, editabil, inclusiv inapoi la TBD, daca de
+  // fapt nu userul curent e responsabilul potrivit
   const [form, setForm] = useState(
     course ? pickFormFields(course) : emptyForm(toISODate(initialDate), profile?.responsible_names?.[0])
+  )
+  const [sameDayCourse, setSameDayCourse] = useState(
+    course ? course.start_date === course.end_date : true
   )
   const [trainers, setTrainers] = useState([])
   const [rooms, setRooms] = useState([])
   const [responsiblePersons, setResponsiblePersons] = useState([])
+  const [categoryOptions, setCategoryOptions] = useState([])
+  const [audienceOptions, setAudienceOptions] = useState([])
   const [error, setError] = useState('')
+  const [conflictWarning, setConflictWarning] = useState('')
   const [busy, setBusy] = useState(false)
 
   const isEditing = Boolean(course?.id)
@@ -75,27 +102,34 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
     supabase.from('trainers').select('*').order('name').then(({ data }) => setTrainers(data || []))
     supabase.from('rooms').select('*').order('name').then(({ data }) => setRooms(data || []))
     supabase.from('responsible_persons').select('*').order('name').then(({ data }) => setResponsiblePersons(data || []))
+    // "Arie curs" si "Public tinta" sunt campuri libere, fara lista gestionata
+    // in Administrare - le oferim totusi ca sugestii (datalist), din ce s-a
+    // mai scris deja pe alte cursuri, ca sa nu apara variante gen "Soft
+    // skills" / "soft-skills" din greseala de tastare
+    supabase.from('courses').select('course_area, target_audience').then(({ data }) => {
+      const rows = data || []
+      setCategoryOptions([...new Set(rows.map((r) => r.course_area).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ro')))
+      setAudienceOptions([...new Set(rows.map((r) => r.target_audience).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ro')))
+    })
   }, [])
 
-  // Sala/trainerul unui curs se salveaza ca text simplu, deci istoricul nu se pierde
-  // niciodata cand dezactivezi sau stergi un element din lista. Aici doar ne asiguram
-  // ca dropdown-ul arata mereu si valoarea deja atribuita cursului (chiar daca a fost
-  // between timp dezactivata sau stearsa din lista), ca sa nu para "disparuta" la editare.
-  function optionsFor(list, currentValue) {
-    const visible = list.filter((item) => item.active || item.name === currentValue)
-    const stillMissing = currentValue && currentValue !== 'TBD' && !list.some((item) => item.name === currentValue)
-    if (stillMissing) {
-      visible.unshift({ id: `deleted-${currentValue}`, name: currentValue, active: false, deleted: true })
-    }
-    return [TBD_OPTION, ...visible]
-  }
-
-  const trainerOptions = optionsFor(trainers, form.trainer)
-  const roomOptions = optionsFor(rooms, form.room)
-  const responsibleOptions = optionsFor(responsiblePersons, form.responsible)
+  const trainerNames = ['TBD', ...trainers.filter((t) => t.active).map((t) => t.name)]
+  const roomNames = ['TBD', ...rooms.filter((r) => r.active).map((r) => r.name)]
+  const responsibleNames = ['TBD', ...responsiblePersons.filter((r) => r.active).map((r) => r.name)]
 
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }))
+  }
+
+  // "Curs de o zi" (bifat implicit): tine data de sfarsit sincronizata cu
+  // cea de start, ca sa nu mai fie nevoie sa completezi manual amandoua
+  // pentru cazul cel mai comun. Debifat, cele doua date devin independente.
+  function updateStartDate(value) {
+    setForm((f) => ({ ...f, start_date: value, end_date: sameDayCourse ? value : f.end_date }))
+  }
+  function toggleSameDayCourse(checked) {
+    setSameDayCourse(checked)
+    if (checked) setForm((f) => ({ ...f, end_date: f.start_date }))
   }
 
   async function findFieldConflict(field, value) {
@@ -120,6 +154,50 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
     }) || null
   }
 
+  // verificare de conflict in timp real, cat userul completeaza formularul -
+  // pur informativa (nu blocheaza nimic), ca sa afle DINAINTE sa apese
+  // Salveaza, nu dupa ce a completat tot restul formularului. Verificarea
+  // definitiva, care chiar blocheaza salvarea, ramane cea din handleSubmit.
+  useEffect(() => {
+    if (!canEdit || form.end_date < form.start_date) {
+      setConflictWarning('')
+      return
+    }
+    const timeout = setTimeout(async () => {
+      try {
+        const roomConflict = await findFieldConflict('room', form.room)
+        if (roomConflict) {
+          setConflictWarning(`Sala "${form.room}" e deja rezervata in aceasta perioada de cursul "${roomConflict.name}".`)
+          return
+        }
+        const trainerConflict = await findFieldConflict('trainer', form.trainer)
+        if (trainerConflict) {
+          setConflictWarning(`Trainerul "${form.trainer}" e deja programat in aceasta perioada la cursul "${trainerConflict.name}".`)
+          return
+        }
+        setConflictWarning('')
+      } catch {
+        // esec silentios aici - verificarea definitiva e cea din handleSubmit
+      }
+    }, 500)
+    return () => clearTimeout(timeout)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.trainer, form.room, form.start_date, form.end_date, form.start_time, form.end_time])
+
+  // daca valoarea scrisa in combobox (Trainer/Sala/Responsabil) nu exista
+  // inca in lista gestionata din Administrare, o creeaza automat (activa)
+  // inainte de salvare, si intoarce numele "canonic" (ortografia deja
+  // existenta, daca s-a potrivit dupa litere mari/mici, evitand duplicate)
+  async function ensureListValue(table, list, rawValue) {
+    const value = (rawValue || '').trim()
+    if (!value || value === 'TBD') return value
+    const existing = findMatch(list, value)
+    if (existing) return existing.name
+    const { data, error } = await supabase.from(table).insert({ name: value, active: true }).select().single()
+    if (error) throw error
+    return data.name
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
@@ -131,11 +209,22 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
 
     setBusy(true)
 
+    let trainerName, roomName, responsibleName
     try {
-      const roomConflict = await findFieldConflict('room', form.room)
+      trainerName = await ensureListValue('trainers', trainers, form.trainer)
+      roomName = await ensureListValue('rooms', rooms, form.room)
+      responsibleName = await ensureListValue('responsible_persons', responsiblePersons, form.responsible)
+    } catch (err) {
+      setError(err.message || 'Nu am putut adauga automat valoarea noua in lista.')
+      setBusy(false)
+      return
+    }
+
+    try {
+      const roomConflict = await findFieldConflict('room', roomName)
       if (roomConflict) {
         setError(
-          `Sala "${form.room}" este deja rezervata in aceasta perioada de cursul "${roomConflict.name}" ` +
+          `Sala "${roomName}" este deja rezervata in aceasta perioada de cursul "${roomConflict.name}" ` +
           `(${roomConflict.start_date} - ${roomConflict.end_date}${roomConflict.start_time ? `, ${roomConflict.start_time.slice(0, 5)}-${roomConflict.end_time?.slice(0, 5)}` : ''}). ` +
           `Alege alta sala sau alt interval.`
         )
@@ -143,10 +232,10 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
         return
       }
 
-      const trainerConflict = await findFieldConflict('trainer', form.trainer)
+      const trainerConflict = await findFieldConflict('trainer', trainerName)
       if (trainerConflict) {
         setError(
-          `Trainerul "${form.trainer}" este deja programat in aceasta perioada la cursul "${trainerConflict.name}" ` +
+          `Trainerul "${trainerName}" este deja programat in aceasta perioada la cursul "${trainerConflict.name}" ` +
           `(${trainerConflict.start_date} - ${trainerConflict.end_date}${trainerConflict.start_time ? `, ${trainerConflict.start_time.slice(0, 5)}-${trainerConflict.end_time?.slice(0, 5)}` : ''}). ` +
           `Alege alt trainer sau alt interval.`
         )
@@ -161,6 +250,9 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
 
     const payload = {
       ...form,
+      trainer: trainerName,
+      room: roomName,
+      responsible: responsibleName,
       participants_count: form.participants_count ? Number(form.participants_count) : null,
     }
 
@@ -221,37 +313,67 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
           <label className="span-2-of-3">
             Data + ora start *
             <div className="datetime-row">
-              <DateInputRO required disabled={!canEdit} value={form.start_date} onChange={(v) => update('start_date', v)} />
+              <DateInputRO required disabled={!canEdit} value={form.start_date} onChange={updateStartDate} />
               <input type="time" disabled={!canEdit} value={form.start_time || ''} onChange={(e) => update('start_time', e.target.value)} />
             </div>
           </label>
           <label>
             Trainer *
-            <select required disabled={!canEdit} value={form.trainer || 'TBD'} onChange={(e) => update('trainer', e.target.value)}>
-              {trainerOptions.map((t) => (
-                <option key={t.id} value={t.name}>
-                  {t.name}{!t.active ? (t.deleted ? ' (sters din lista)' : ' (inactiv)') : ''}
-                </option>
-              ))}
-            </select>
+            <input
+              list="trainer-options"
+              required
+              disabled={!canEdit}
+              autoComplete="off"
+              value={form.trainer || ''}
+              onChange={(e) => update('trainer', e.target.value)}
+            />
+            <datalist id="trainer-options">
+              {trainerNames.map((n) => <option key={n} value={n} />)}
+            </datalist>
+            {comboHint(form.trainer, trainers) && (
+              <span className="combo-hint">{comboHint(form.trainer, trainers)}</span>
+            )}
           </label>
 
           <label className="span-2-of-3">
-            Data + ora sfarsit *
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              Data + ora sfarsit *
+              <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 400, fontSize: 12, cursor: canEdit ? 'pointer' : 'default' }}>
+                <input
+                  type="checkbox"
+                  disabled={!canEdit}
+                  checked={sameDayCourse}
+                  onChange={(e) => toggleSameDayCourse(e.target.checked)}
+                />
+                curs de o zi
+              </label>
+            </span>
             <div className="datetime-row">
-              <DateInputRO required disabled={!canEdit} value={form.end_date} onChange={(v) => update('end_date', v)} />
+              <DateInputRO
+                required
+                disabled={!canEdit || sameDayCourse}
+                value={form.end_date}
+                onChange={(v) => update('end_date', v)}
+              />
               <input type="time" disabled={!canEdit} value={form.end_time || ''} onChange={(e) => update('end_time', e.target.value)} />
             </div>
           </label>
           <label>
             Sala *
-            <select required disabled={!canEdit} value={form.room || 'TBD'} onChange={(e) => update('room', e.target.value)}>
-              {roomOptions.map((r) => (
-                <option key={r.id} value={r.name}>
-                  {r.name}{r.capacity ? ` (${r.capacity} locuri)` : ''}{!r.active ? (r.deleted ? ' (sters din lista)' : ' (inactiv)') : ''}
-                </option>
-              ))}
-            </select>
+            <input
+              list="room-options"
+              required
+              disabled={!canEdit}
+              autoComplete="off"
+              value={form.room || ''}
+              onChange={(e) => update('room', e.target.value)}
+            />
+            <datalist id="room-options">
+              {roomNames.map((n) => <option key={n} value={n} />)}
+            </datalist>
+            {comboHint(form.room, rooms, { withCapacity: true }) && (
+              <span className="combo-hint">{comboHint(form.room, rooms, { withCapacity: true })}</span>
+            )}
           </label>
 
           <label>
@@ -273,13 +395,20 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
 
           <label>
             Responsabil *
-            <select required disabled={!canEdit} value={form.responsible || 'TBD'} onChange={(e) => update('responsible', e.target.value)}>
-              {responsibleOptions.map((r) => (
-                <option key={r.id} value={r.name}>
-                  {r.name}{!r.active ? (r.deleted ? ' (sters din lista)' : ' (inactiv)') : ''}
-                </option>
-              ))}
-            </select>
+            <input
+              list="responsible-options"
+              required
+              disabled={!canEdit}
+              autoComplete="off"
+              value={form.responsible || ''}
+              onChange={(e) => update('responsible', e.target.value)}
+            />
+            <datalist id="responsible-options">
+              {responsibleNames.map((n) => <option key={n} value={n} />)}
+            </datalist>
+            {comboHint(form.responsible, responsiblePersons) && (
+              <span className="combo-hint">{comboHint(form.responsible, responsiblePersons)}</span>
+            )}
           </label>
 
           <label>
@@ -294,12 +423,32 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
 
           <label>
             Arie curs / categorie
-            <input disabled={!canEdit} value={form.course_area || ''} onChange={(e) => update('course_area', e.target.value)} placeholder="ex: Soft skills, Tehnic, Conformitate" />
+            <input
+              list="category-options"
+              disabled={!canEdit}
+              autoComplete="off"
+              value={form.course_area || ''}
+              onChange={(e) => update('course_area', e.target.value)}
+              placeholder="ex: Soft skills, Tehnic, Conformitate"
+            />
+            <datalist id="category-options">
+              {categoryOptions.map((c) => <option key={c} value={c} />)}
+            </datalist>
           </label>
 
           <label>
             Public tinta
-            <input disabled={!canEdit} value={form.target_audience || ''} onChange={(e) => update('target_audience', e.target.value)} placeholder="ex: Manageri, Noi angajati" />
+            <input
+              list="audience-options"
+              disabled={!canEdit}
+              autoComplete="off"
+              value={form.target_audience || ''}
+              onChange={(e) => update('target_audience', e.target.value)}
+              placeholder="ex: Manageri, Noi angajati"
+            />
+            <datalist id="audience-options">
+              {audienceOptions.map((a) => <option key={a} value={a} />)}
+            </datalist>
           </label>
 
           <label className="span-2">
@@ -307,6 +456,7 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
             <textarea disabled={!canEdit} value={form.notes || ''} onChange={(e) => update('notes', e.target.value)} rows={2} />
           </label>
 
+          {conflictWarning && !error && <div className="form-warning span-2">⚠ {conflictWarning}</div>}
           {error && <div className="auth-error span-2">{error}</div>}
 
           <div className="modal-actions span-2">
