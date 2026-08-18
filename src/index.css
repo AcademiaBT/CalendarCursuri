@@ -412,25 +412,6 @@ input:focus, select:focus, textarea:focus {
 .course-form label { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; font-weight: 600; color: var(--text-muted); }
 .course-form input, .course-form select, .course-form textarea { padding: 7px 9px; }
 .combo-hint { font-size: 10.5px; font-weight: 500; color: var(--text-muted); }
-
-/* combobox (input + datalist): fara sageata vizuala, un input text obisnuit
-   nu lasa de inteles ca poti vedea toate optiunile fara sa tastezi nimic -
-   adaugam o sageata decorativa, ca la un <select>, doar vizuala (clic
-   oriunde pe camp deschide lista de sugestii, browser-ul se ocupa de asta) */
-.combo-field { position: relative; }
-.combo-field input { padding-right: 26px; width: 100%; box-sizing: border-box; }
-.combo-field::after {
-  content: '';
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  width: 7px;
-  height: 7px;
-  border-right: 2px solid var(--text-muted);
-  border-bottom: 2px solid var(--text-muted);
-  transform: translateY(-70%) rotate(45deg);
-  pointer-events: none;
-}
 .form-warning {
   background: #fff3cd;
   color: #8a6d00;
