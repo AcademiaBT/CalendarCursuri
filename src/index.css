@@ -412,6 +412,22 @@ input:focus, select:focus, textarea:focus {
 .course-form label { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; font-weight: 600; color: var(--text-muted); }
 .course-form input, .course-form select, .course-form textarea { padding: 7px 9px; }
 .combo-hint { font-size: 10.5px; font-weight: 500; color: var(--text-muted); }
+
+/* bannerul "seamana cu X deja existent" - neblocant, sub camp, culoare
+   discreta amber (aceeasi familie ca .form-warning), ca sa atraga atentia
+   fara sa para o eroare */
+.fuzzy-hint { font-size: 11px; color: #8a6d00; }
+.fuzzy-hint-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.fuzzy-hint-btn-secondary { color: var(--text-muted); }
 .form-warning {
   background: #fff3cd;
   color: #8a6d00;

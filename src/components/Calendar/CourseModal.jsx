@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../contexts/AuthContext'
 import { toISODate } from '../../utils/dateHelpers'
+import { normalizeForCompare, findFuzzyMatch } from '../../utils/fuzzyMatch'
 import DateInputRO from '../DateInputRO'
 
 const COURSE_TYPES = ['TBD', 'live', 'online', 'blended', 'e-learning']
@@ -53,12 +54,12 @@ const emptyForm = (startDate, defaultResponsible) => ({
 })
 
 // gaseste elementul din lista (traineri/sali/responsabili) a carui nume se
-// potriveste cu valoarea data, ignorand majuscule/spatii - folosit atat
-// pentru afisarea unui indiciu langa camp, cat si la salvare
+// potriveste cu valoarea data, dupa normalizare (spatii/punctuatie/majuscule)
+// - folosit atat pentru afisarea unui indiciu langa camp, cat si la salvare
 function findMatch(list, rawValue) {
-  const value = (rawValue || '').trim().toLowerCase()
+  const value = normalizeForCompare(rawValue)
   if (!value) return null
-  return list.find((item) => item.name.trim().toLowerCase() === value) || null
+  return list.find((item) => normalizeForCompare(item.name) === value) || null
 }
 
 // indiciul aratat sub un combobox (Trainer/Sala/Responsabil): fie ca
@@ -80,10 +81,25 @@ function comboHint(rawValue, list, { withCapacity = false } = {}) {
 // formularea difera de comboHint (care are efect real intr-o lista din
 // Administrare)
 function freeTextHint(rawValue, options) {
-  const value = (rawValue || '').trim()
+  const value = normalizeForCompare(rawValue)
   if (!value) return null
-  const exists = options.some((o) => o.trim().toLowerCase() === value.toLowerCase())
+  const exists = options.some((o) => normalizeForCompare(o) === value)
   return exists ? null : 'valoare noua'
+}
+
+// bannerul neblocant "seamana cu X deja existent" - afisat la parasirea
+// campului (onBlur), cand valoarea scrisa nu e o potrivire exacta, dar e
+// foarte apropiata de una deja existenta (posibil typo). Userul poate
+// ignora complet si salva oricum cu ce a scris - nu blocheaza nimic.
+function FuzzySuggestion({ suggestion, onAccept, onDismiss }) {
+  return (
+    <span className="fuzzy-hint">
+      seamana cu <strong>„{suggestion}"</strong>, deja existent —{' '}
+      <button type="button" className="fuzzy-hint-btn" onClick={onAccept}>foloseste-l</button>
+      {' '}·{' '}
+      <button type="button" className="fuzzy-hint-btn fuzzy-hint-btn-secondary" onClick={onDismiss}>nu, e nou</button>
+    </span>
+  )
 }
 
 export default function CourseModal({ initialDate, course, onClose, onSaved }) {
@@ -106,6 +122,9 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
   const [error, setError] = useState('')
   const [conflictWarning, setConflictWarning] = useState('')
   const [busy, setBusy] = useState(false)
+  // { field, suggestion } | null - un singur banner de similaritate activ
+  // odata, pentru campul pe care userul tocmai l-a parasit (onBlur)
+  const [fuzzyHint, setFuzzyHint] = useState(null)
 
   const isEditing = Boolean(course?.id)
   const canEdit = !isEditing || isAdmin || course.created_by === user?.id
@@ -131,6 +150,25 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
 
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }))
+    // daca userul reincepe sa scrie in campul pentru care era afisat un
+    // banner de similaritate, il ascundem - nu mai e relevant pentru noua valoare
+    setFuzzyHint((h) => (h?.field === field ? null : h))
+  }
+
+  // la parasirea campului (onBlur): daca valoarea scrisa nu e o potrivire
+  // exacta, dar e foarte apropiata de una deja existenta, aratam bannerul.
+  // Complet neblocant - daca userul nu raspunde si apasa Salveaza, se
+  // foloseste ce a scris el, ca si cum bannerul n-ar fi aparut.
+  function checkFuzzy(field, value, existingNames) {
+    const suggestion = findFuzzyMatch(value, existingNames)
+    setFuzzyHint(suggestion ? { field, suggestion } : null)
+  }
+  function acceptFuzzy() {
+    if (fuzzyHint) update(fuzzyHint.field, fuzzyHint.suggestion)
+    setFuzzyHint(null)
+  }
+  function dismissFuzzy() {
+    setFuzzyHint(null)
   }
 
   // "Curs de o zi" (bifat implicit): tine data de sfarsit sincronizata cu
@@ -355,12 +393,15 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
                 autoComplete="off"
                 value={form.trainer || ''}
                 onChange={(e) => update('trainer', e.target.value)}
+                onBlur={() => checkFuzzy('trainer', form.trainer, trainers.map((t) => t.name))}
               />
             </div>
             <datalist id="trainer-options">
               {trainerNames.map((n) => <option key={n} value={n} />)}
             </datalist>
-            {comboHint(form.trainer, trainers) && (
+            {fuzzyHint?.field === 'trainer' ? (
+              <FuzzySuggestion suggestion={fuzzyHint.suggestion} onAccept={acceptFuzzy} onDismiss={dismissFuzzy} />
+            ) : comboHint(form.trainer, trainers) && (
               <span className="combo-hint">{comboHint(form.trainer, trainers)}</span>
             )}
           </label>
@@ -388,12 +429,15 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
                 autoComplete="off"
                 value={form.room || ''}
                 onChange={(e) => update('room', e.target.value)}
+                onBlur={() => checkFuzzy('room', form.room, rooms.map((r) => r.name))}
               />
             </div>
             <datalist id="room-options">
               {roomNames.map((n) => <option key={n} value={n} />)}
             </datalist>
-            {comboHint(form.room, rooms, { withCapacity: true }) && (
+            {fuzzyHint?.field === 'room' ? (
+              <FuzzySuggestion suggestion={fuzzyHint.suggestion} onAccept={acceptFuzzy} onDismiss={dismissFuzzy} />
+            ) : comboHint(form.room, rooms, { withCapacity: true }) && (
               <span className="combo-hint">{comboHint(form.room, rooms, { withCapacity: true })}</span>
             )}
           </label>
@@ -425,12 +469,15 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
                 autoComplete="off"
                 value={form.responsible || ''}
                 onChange={(e) => update('responsible', e.target.value)}
+                onBlur={() => checkFuzzy('responsible', form.responsible, responsiblePersons.map((r) => r.name))}
               />
             </div>
             <datalist id="responsible-options">
               {responsibleNames.map((n) => <option key={n} value={n} />)}
             </datalist>
-            {comboHint(form.responsible, responsiblePersons) && (
+            {fuzzyHint?.field === 'responsible' ? (
+              <FuzzySuggestion suggestion={fuzzyHint.suggestion} onAccept={acceptFuzzy} onDismiss={dismissFuzzy} />
+            ) : comboHint(form.responsible, responsiblePersons) && (
               <span className="combo-hint">{comboHint(form.responsible, responsiblePersons)}</span>
             )}
           </label>
@@ -454,13 +501,16 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
                 autoComplete="off"
                 value={form.course_area || ''}
                 onChange={(e) => update('course_area', e.target.value)}
+                onBlur={() => checkFuzzy('course_area', form.course_area, categoryOptions)}
                 placeholder="ex: Soft skills, Tehnic, Conformitate"
               />
             </div>
             <datalist id="category-options">
               {categoryOptions.map((c) => <option key={c} value={c} />)}
             </datalist>
-            {freeTextHint(form.course_area, categoryOptions) && (
+            {fuzzyHint?.field === 'course_area' ? (
+              <FuzzySuggestion suggestion={fuzzyHint.suggestion} onAccept={acceptFuzzy} onDismiss={dismissFuzzy} />
+            ) : freeTextHint(form.course_area, categoryOptions) && (
               <span className="combo-hint">{freeTextHint(form.course_area, categoryOptions)}</span>
             )}
           </label>
@@ -474,13 +524,16 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
                 autoComplete="off"
                 value={form.target_audience || ''}
                 onChange={(e) => update('target_audience', e.target.value)}
+                onBlur={() => checkFuzzy('target_audience', form.target_audience, audienceOptions)}
                 placeholder="ex: Manageri, Noi angajati"
               />
             </div>
             <datalist id="audience-options">
               {audienceOptions.map((a) => <option key={a} value={a} />)}
             </datalist>
-            {freeTextHint(form.target_audience, audienceOptions) && (
+            {fuzzyHint?.field === 'target_audience' ? (
+              <FuzzySuggestion suggestion={fuzzyHint.suggestion} onAccept={acceptFuzzy} onDismiss={dismissFuzzy} />
+            ) : freeTextHint(form.target_audience, audienceOptions) && (
               <span className="combo-hint">{freeTextHint(form.target_audience, audienceOptions)}</span>
             )}
           </label>
