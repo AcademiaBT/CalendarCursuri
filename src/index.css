@@ -795,6 +795,15 @@ input:focus, select:focus, textarea:focus {
     display: none !important;
   }
   body, .app-shell, .app-main { background: white !important; }
+  /* browserele ascund implicit fundalurile colorate la printare (economie
+     de cerneala) - fara asta, barele de "Incarcare traineri"/"Ocupare sali",
+     segmentele din "Mix categorii/tip curs" si culorile din calendar ies
+     complet goale pe hartie. Proprietatea se mosteneste, deci o punem o
+     singura data, la nivel de body, ca sa acopere tot ce e dedesubt. */
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
   .admin-table { font-size: 11px; }
   .stats-summary-card { background: white !important; color: black !important; border: 1px solid #ccc; }
   .stats-card { break-inside: avoid; border: 1px solid #ccc; }

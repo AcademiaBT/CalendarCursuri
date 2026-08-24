@@ -242,24 +242,40 @@ export default function ReportsPage() {
               </button>
             </div>
             <div className="reports-actions">
-              <button
-                disabled={results.length === 0}
-                onClick={() => exportCoursesToPdf(results, { filtersLabel: filtersLabel() })}
-              >
-                Descarca PDF
-              </button>
-              <button
-                disabled={results.length === 0}
-                className="secondary-btn"
-                onClick={() => exportCoursesToXlsx(results)}
-              >
-                Descarca Excel
-              </button>
-              <button
-                disabled={results.length === 0}
-                className="secondary-btn"
-                onClick={() => window.print()}
-              >
+              {view === 'list' ? (
+                <>
+                  <button
+                    disabled={results.length === 0}
+                    onClick={() => exportCoursesToPdf(results, { filtersLabel: filtersLabel() })}
+                  >
+                    Descarca PDF
+                  </button>
+                  <button
+                    disabled={results.length === 0}
+                    className="secondary-btn"
+                    onClick={() => exportCoursesToXlsx(results)}
+                  >
+                    Descarca Excel
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    disabled={!stats}
+                    onClick={() => exportStatsToPdf(stats, { filtersLabel: filtersLabel() })}
+                  >
+                    Descarca PDF
+                  </button>
+                  <button
+                    disabled={!stats}
+                    className="secondary-btn"
+                    onClick={() => exportStatsToXlsx(stats, { filtersLabel: filtersLabel() })}
+                  >
+                    Descarca Excel
+                  </button>
+                </>
+              )}
+              <button className="secondary-btn" onClick={() => window.print()}>
                 🖨️ Printeaza
               </button>
             </div>
@@ -299,7 +315,7 @@ export default function ReportsPage() {
               </tbody>
             </table>
           ) : (
-            <StatsView stats={stats} filtersLabel={filtersLabel()} />
+            <StatsView stats={stats} />
           )}
         </div>
       )}
@@ -391,7 +407,7 @@ function StatDistributionSection({ title, explanation, rows }) {
   )
 }
 
-function StatsView({ stats, filtersLabel }) {
+function StatsView({ stats }) {
   if (!stats) return null
   return (
     <div className="reports-stats">
@@ -443,18 +459,6 @@ function StatsView({ stats, filtersLabel }) {
         explanation={REPORT_EXPLANATIONS.courseTypeMix}
         rows={stats.courseTypeMix}
       />
-
-      <div className="reports-actions" style={{ marginTop: 6 }}>
-        <button onClick={() => exportStatsToPdf(stats, { filtersLabel })}>
-          Descarcă statistici (PDF)
-        </button>
-        <button className="secondary-btn" onClick={() => exportStatsToXlsx(stats, { filtersLabel })}>
-          Descarcă statistici (Excel)
-        </button>
-        <button className="secondary-btn" onClick={() => window.print()}>
-          🖨️ Printeaza
-        </button>
-      </div>
     </div>
   )
 }
