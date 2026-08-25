@@ -163,6 +163,20 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
     const suggestion = findFuzzyMatch(value, existingNames)
     setFuzzyHint(suggestion ? { field, suggestion } : null)
   }
+
+  // Trainer/Sala/Responsabil pornesc cu "TBD" ca valoare implicita - fara
+  // sa o golim la click, sugestiile din datalist raman filtrate dupa "TBD"
+  // (nu se potriveste cu nimic altceva), deci userul trebuie sa stearga
+  // manual inainte sa vada lista completa. La focus, daca valoarea e chiar
+  // "TBD" (nemodificata), o golim automat - lista completa apare imediat.
+  function clearDefaultOnFocus(field, currentValue) {
+    if (currentValue === 'TBD') update(field, '')
+  }
+  // daca userul a deschis campul (l-a golit) dar a plecat fara sa aleaga
+  // nimic, revenim la "TBD" - e un camp obligatoriu, nu poate ramane gol
+  function restoreDefaultOnBlur(field, currentValue) {
+    if (!currentValue.trim()) update(field, 'TBD')
+  }
   function acceptFuzzy() {
     if (fuzzyHint) update(fuzzyHint.field, fuzzyHint.suggestion)
     setFuzzyHint(null)
@@ -393,7 +407,11 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
                 autoComplete="off"
                 value={form.trainer || ''}
                 onChange={(e) => update('trainer', e.target.value)}
-                onBlur={() => checkFuzzy('trainer', form.trainer, trainers.map((t) => t.name))}
+                onFocus={() => clearDefaultOnFocus('trainer', form.trainer)}
+                onBlur={() => {
+                  restoreDefaultOnBlur('trainer', form.trainer)
+                  checkFuzzy('trainer', form.trainer, trainers.map((t) => t.name))
+                }}
               />
             </div>
             <datalist id="trainer-options">
@@ -429,7 +447,11 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
                 autoComplete="off"
                 value={form.room || ''}
                 onChange={(e) => update('room', e.target.value)}
-                onBlur={() => checkFuzzy('room', form.room, rooms.map((r) => r.name))}
+                onFocus={() => clearDefaultOnFocus('room', form.room)}
+                onBlur={() => {
+                  restoreDefaultOnBlur('room', form.room)
+                  checkFuzzy('room', form.room, rooms.map((r) => r.name))
+                }}
               />
             </div>
             <datalist id="room-options">
@@ -469,7 +491,11 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
                 autoComplete="off"
                 value={form.responsible || ''}
                 onChange={(e) => update('responsible', e.target.value)}
-                onBlur={() => checkFuzzy('responsible', form.responsible, responsiblePersons.map((r) => r.name))}
+                onFocus={() => clearDefaultOnFocus('responsible', form.responsible)}
+                onBlur={() => {
+                  restoreDefaultOnBlur('responsible', form.responsible)
+                  checkFuzzy('responsible', form.responsible, responsiblePersons.map((r) => r.name))
+                }}
               />
             </div>
             <datalist id="responsible-options">
