@@ -2,7 +2,8 @@ import { Fragment } from 'react'
 import { format, isToday as checkIsToday } from 'date-fns'
 import { ro } from 'date-fns/locale'
 import { toISODate, formatWeekRangeTitle } from '../../utils/dateHelpers'
-import { getBarStyle, courseDurationDays } from '../../utils/colors'
+import { getBarStyle } from '../../utils/colors'
+import { workingDaysCount } from '../../utils/workingDays'
 import { suppressNextGhostClick } from '../../utils/dragHelpers'
 
 // Gaseste in ce coloane (0-6, Luni-Duminica) ar trebui desenata bara unui
@@ -49,7 +50,11 @@ export const BAR_FIELD_OPTIONS = [
 export const ATTRIBUTE_COLUMN_OPTIONS = [
   { key: 'interval', label: 'Interval orar', getValue: (c) => (c.start_time ? `${c.start_time.slice(0, 5)}-${c.end_time?.slice(0, 5) || ''}` : '') },
   { key: 'trainer', label: 'Trainer', getValue: (c) => c.trainer || '' },
-  { key: 'days', label: 'Nr zile', getValue: (c) => String(courseDurationDays(c.start_date, c.end_date)) },
+  {
+    key: 'days',
+    label: 'Zile lucr.',
+    getValue: (c) => String(workingDaysCount(c.start_date, c.end_date)),
+  },
   { key: 'participants_group', label: 'Participanti', getValue: (c) => c.participants_group || '' },
   { key: 'participants_count', label: 'Nr. participanti', getValue: (c) => (c.participants_count ? String(c.participants_count) : '') },
   { key: 'room', label: 'Sala', getValue: (c) => c.room || '' },
