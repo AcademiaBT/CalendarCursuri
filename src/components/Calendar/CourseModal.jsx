@@ -159,7 +159,18 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
   // exacta, dar e foarte apropiata de una deja existenta, aratam bannerul.
   // Complet neblocant - daca userul nu raspunde si apasa Salveaza, se
   // foloseste ce a scris el, ca si cum bannerul n-ar fi aparut.
+  //
+  // IMPORTANT: daca valoarea se potriveste deja EXACT cu ceva existent (ex:
+  // a fost aleasa direct din lista), nu mai verificam similaritatea deloc -
+  // nu s-ar crea nimic nou, deci n-are sens sa intrebam "seamana cu X?" cand
+  // userul tocmai a ales ceva deja existent (chiar daca acel ceva seamana,
+  // la randul lui, cu alta intrare din lista - nu e vina userului acum).
   function checkFuzzy(field, value, existingNames) {
+    const alreadyExists = existingNames.some((n) => normalizeForCompare(n) === normalizeForCompare(value))
+    if (alreadyExists) {
+      setFuzzyHint(null)
+      return
+    }
     const suggestion = findFuzzyMatch(value, existingNames)
     setFuzzyHint(suggestion ? { field, suggestion } : null)
   }
