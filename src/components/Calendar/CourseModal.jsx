@@ -261,16 +261,30 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.trainer, form.room, form.start_date, form.end_date, form.start_time, form.end_time])
 
+  // "Ion popescu" / "ION POPESCU" / "ion POPESCU" -> "Ion Popescu" - fiecare
+  // cuvant incepe cu majuscula, restul literelor mici. Aplicata doar la
+  // Trainer, doar cand se creeaza efectiv o valoare noua (nu schimba
+  // ortografia unei valori deja existente in lista).
+  function toProperCase(value) {
+    return (value || '')
+      .split(' ')
+      .map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : word))
+      .join(' ')
+  }
+
   // daca valoarea scrisa in combobox (Trainer/Sala/Responsabil) nu exista
   // inca in lista gestionata din Administrare, o creeaza automat (activa)
   // inainte de salvare, si intoarce numele "canonic" (ortografia deja
-  // existenta, daca s-a potrivit dupa litere mari/mici, evitand duplicate)
-  async function ensureListValue(table, list, rawValue) {
+  // existenta, daca s-a potrivit dupa litere mari/mici, evitand duplicate).
+  // "transform" (optional) formateaza valoarea NOUA inainte de a o crea -
+  // nu se aplica peste o valoare deja existenta, gasita in lista.
+  async function ensureListValue(table, list, rawValue, { transform } = {}) {
     const value = (rawValue || '').trim()
     if (!value || value === 'TBD') return value
     const existing = findMatch(list, value)
     if (existing) return existing.name
-    const { data, error } = await supabase.from(table).insert({ name: value, active: true }).select().single()
+    const nameToInsert = transform ? transform(value) : value
+    const { data, error } = await supabase.from(table).insert({ name: nameToInsert, active: true }).select().single()
     if (error) throw error
     return data.name
   }
@@ -288,7 +302,7 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
 
     let trainerName, roomName, responsibleName
     try {
-      trainerName = await ensureListValue('trainers', trainers, form.trainer)
+      trainerName = await ensureListValue('trainers', trainers, form.trainer, { transform: toProperCase })
       roomName = await ensureListValue('rooms', rooms, form.room)
       responsibleName = await ensureListValue('responsible_persons', responsiblePersons, form.responsible)
     } catch (err) {

@@ -17,6 +17,9 @@ function ListManager({ title, table, extraColumns = [], importHint }) {
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState('')
   const fileInputRef = useRef(null)
+  // id-ul randului aflat in editare (nume/coloane extra) - null = niciunul
+  const [editingId, setEditingId] = useState(null)
+  const [editDraft, setEditDraft] = useState({ name: '', extra: {} })
 
   async function load() {
     const { data, error } = await supabase.from(table).select('*').order('name')
@@ -49,6 +52,42 @@ function ListManager({ title, table, extraColumns = [], importHint }) {
     const { error } = await supabase.from(table).delete().eq('id', item.id)
     if (error) setError(error.message)
     else load()
+  }
+
+  // Editare inline nume (+ coloane extra, ex: capacitate la sali). Doar
+  // aceasta lista se schimba - cursurile deja salvate raman cu numele
+  // vechi, neschimbate (istoricul e text, nu legatura catre acest rand -
+  // decizie intentionata, ca stergerea/redenumirea unui element sa nu
+  // strice cursurile trecute). Redenumirea afecteaza doar ce se alege de
+  // acum incolo in formularul de curs.
+  function startEdit(item) {
+    setEditingId(item.id)
+    setEditDraft({
+      name: item.name,
+      extra: Object.fromEntries(extraColumns.map((c) => [c.key, item[c.key] ?? ''])),
+    })
+    setError('')
+  }
+  function cancelEdit() {
+    setEditingId(null)
+  }
+  async function saveEdit(item) {
+    if (!editDraft.name.trim()) return
+    const payload = { name: editDraft.name.trim() }
+    for (const col of extraColumns) {
+      const raw = editDraft.extra[col.key]
+      payload[col.key] = raw === '' || raw === undefined ? null : (col.type === 'number' ? Number(raw) : raw)
+    }
+    const { error } = await supabase.from(table).update(payload).eq('id', item.id)
+    if (error) setError(error.message)
+    else {
+      setEditingId(null)
+      load()
+    }
+  }
+  function handleEditKeyDown(e, item) {
+    if (e.key === 'Enter') { e.preventDefault(); saveEdit(item) }
+    if (e.key === 'Escape') cancelEdit()
   }
 
   // Import dintr-un fisier Excel: citeste prima coloana din prima foaie ca
@@ -111,6 +150,11 @@ function ListManager({ title, table, extraColumns = [], importHint }) {
   return (
     <div className="admin-section">
       <h3>{title}</h3>
+      <p className="admin-hint">
+        Redenumirea afecteaza doar ce alegi de acum incolo in formularul de curs - cursurile
+        deja salvate raman cu numele vechi, neschimbate (istoricul e text, nu legatura catre
+        acest rand).
+      </p>
       {error && <div className="auth-error">{error}</div>}
       {importResult && <div className="auth-info">{importResult}</div>}
 
@@ -157,14 +201,49 @@ function ListManager({ title, table, extraColumns = [], importHint }) {
         <tbody>
           {items.map((item) => (
             <tr key={item.id} className={item.active ? '' : 'row-inactive'}>
-              <td>{item.name}</td>
-              {extraColumns.map((c) => <td key={c.key}>{item[c.key] ?? '-'}</td>)}
-              <td>
-                <input type="checkbox" checked={item.active} onChange={() => toggleActive(item)} />
-              </td>
-              <td>
-                <button className="link-btn danger-text" onClick={() => removeItem(item)}>sterge</button>
-              </td>
+              {editingId === item.id ? (
+                <>
+                  <td>
+                    <input
+                      value={editDraft.name}
+                      onChange={(e) => setEditDraft((d) => ({ ...d, name: e.target.value }))}
+                      onKeyDown={(e) => handleEditKeyDown(e, item)}
+                      autoFocus
+                    />
+                  </td>
+                  {extraColumns.map((c) => (
+                    <td key={c.key}>
+                      <input
+                        type={c.type || 'text'}
+                        value={editDraft.extra[c.key] ?? ''}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, extra: { ...d.extra, [c.key]: e.target.value } }))}
+                        onKeyDown={(e) => handleEditKeyDown(e, item)}
+                      />
+                    </td>
+                  ))}
+                  <td>
+                    <input type="checkbox" checked={item.active} onChange={() => toggleActive(item)} />
+                  </td>
+                  <td>
+                    <button type="button" className="link-btn" onClick={() => saveEdit(item)}>salveaza</button>
+                    {' · '}
+                    <button type="button" className="link-btn" onClick={cancelEdit}>anuleaza</button>
+                  </td>
+                </>
+              ) : (
+                <>
+                  <td>{item.name}</td>
+                  {extraColumns.map((c) => <td key={c.key}>{item[c.key] ?? '-'}</td>)}
+                  <td>
+                    <input type="checkbox" checked={item.active} onChange={() => toggleActive(item)} />
+                  </td>
+                  <td>
+                    <button type="button" className="link-btn" onClick={() => startEdit(item)}>editeaza</button>
+                    {' · '}
+                    <button type="button" className="link-btn danger-text" onClick={() => removeItem(item)}>sterge</button>
+                  </td>
+                </>
+              )}
             </tr>
           ))}
         </tbody>
