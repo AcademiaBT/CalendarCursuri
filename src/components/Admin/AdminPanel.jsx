@@ -3,6 +3,8 @@ import * as XLSX from 'xlsx'
 import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../contexts/AuthContext'
 import useNavbarOffset from '../../hooks/useNavbarOffset'
+import { normalizeForCompare } from '../../utils/fuzzyMatch'
+import { matchHeaderToField, parseExcelDate, parseExcelTime, dateToISO } from '../../utils/courseImport'
 
 // Nume de coloana acceptate in Excel pentru randul de antet (daca exista) -
 // orice alt text de pe prima coloana e tratat ca fiind chiar o valoare de
@@ -475,6 +477,237 @@ function BackupSettingsPanel({ onDirtyChange }) {
   )
 }
 
+// Import in bloc de cursuri dintr-un fisier Excel - spre deosebire de
+// ListManager (import simplu, o coloana), aici fiecare rand devine un curs
+// intreg, trecut prin ACELEASI reguli ca la adaugarea manuala: trainer/sala/
+// responsabil necunoscute se creeaza automat, iar suprapunerile de sala/
+// trainer sunt respinse (nu opresc tot importul - doar randul respectiv).
+// Randurile se trimit UNUL CATE UNUL (nu toate deodata), ca un rand cu
+// probleme sa nu blocheze restul, si ca sa putem raporta exact ce a mers.
+function ImportCoursesPanel() {
+  const { user } = useAuth()
+  const fileInputRef = useRef(null)
+  const [importing, setImporting] = useState(false)
+  const [progress, setProgress] = useState(null) // { done, total } | null
+  const [results, setResults] = useState(null) // { successCount, failures: [{row, reason}] } | null
+
+  function downloadTemplate() {
+    const headers = [
+      'Denumire curs', 'Data start', 'Data sfarsit', 'Ora start', 'Ora sfarsit',
+      'Tip curs', 'Trainer', 'Sala', 'Responsabil', 'Grup participanti',
+      'Nr participanti', 'Categorie', 'Public tinta', 'Mail invitare', 'Catering', 'Observatii',
+    ]
+    const example = [
+      'Curs exemplu', '01/09/2026', '01/09/2026', '09:00', '17:00',
+      'live', 'TBD', 'TBD', 'TBD', '', '', '', '', '', '', '',
+    ]
+    const sheet = XLSX.utils.aoa_to_sheet([headers, example])
+    sheet['!cols'] = headers.map(() => ({ wch: 18 }))
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, sheet, 'Cursuri')
+    XLSX.writeFile(workbook, 'model-import-cursuri.xlsx')
+  }
+
+  // gaseste (potrivire dupa normalizare) sau creeaza automat un nume nou in
+  // lista respectiva (Traineri/Sali/Responsabili) - "cache" e lista deja
+  // incarcata o singura data la inceputul importului, actualizata pe masura
+  // ce se creeaza nume noi, ca sa nu interogam baza de date la fiecare rand
+  async function ensureListValue(table, cache, rawValue) {
+    const value = (rawValue ?? '').toString().trim()
+    if (!value || value.toUpperCase() === 'TBD') return 'TBD'
+    const norm = normalizeForCompare(value)
+    const existing = cache.find((item) => normalizeForCompare(item.name) === norm)
+    if (existing) return existing.name
+    const { data, error } = await supabase.from(table).insert({ name: value, active: true }).select().single()
+    if (error) throw new Error(`nu am putut adauga "${value}" in lista: ${error.message}`)
+    cache.push(data)
+    return data.name
+  }
+
+  async function findConflict(field, value, startDate, endDate) {
+    if (!value || value === 'TBD') return null
+    const { data, error } = await supabase
+      .from('courses')
+      .select('id, name, start_date, end_date')
+      .ilike(field, value)
+      .lte('start_date', endDate)
+      .gte('end_date', startDate)
+    if (error) throw new Error(error.message)
+    return (data || [])[0] || null
+  }
+
+  async function handleFile(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    setImporting(true)
+    setResults(null)
+    setProgress(null)
+
+    try {
+      const buffer = await file.arrayBuffer()
+      const workbook = XLSX.read(buffer, { type: 'array', cellDates: true })
+      const sheet = workbook.Sheets[workbook.SheetNames[0]]
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' })
+
+      if (rows.length < 2) {
+        setResults({ successCount: 0, failures: [{ row: '-', reason: 'Fisierul nu are randuri de date sub antet.' }] })
+        return
+      }
+
+      const headerRow = rows[0]
+      const fieldByColumn = headerRow.map((h) => matchHeaderToField(h))
+      const dataRows = rows.slice(1).filter((r) => r.some((cell) => cell !== '' && cell != null))
+
+      // listele existente, incarcate o singura data (nu cate una per rand)
+      const [{ data: trainersData }, { data: roomsData }, { data: respData }] = await Promise.all([
+        supabase.from('trainers').select('*'),
+        supabase.from('rooms').select('*'),
+        supabase.from('responsible_persons').select('*'),
+      ])
+      const trainersCache = trainersData || []
+      const roomsCache = roomsData || []
+      const respCache = respData || []
+
+      const failures = []
+      let successCount = 0
+
+      for (let i = 0; i < dataRows.length; i++) {
+        setProgress({ done: i, total: dataRows.length })
+        const rawRow = dataRows[i]
+        const excelRowNumber = rows.indexOf(rawRow) + 1 // +1: randul 1 din Excel e antetul
+
+        const record = {}
+        headerRow.forEach((h, idx) => {
+          const field = fieldByColumn[idx]
+          if (field) record[field] = rawRow[idx]
+        })
+
+        try {
+          if (!record.name || !String(record.name).trim()) throw new Error('lipseste denumirea cursului')
+
+          const startDateObj = parseExcelDate(record.start_date)
+          if (!startDateObj) throw new Error('data de start lipseste sau nu e recunoscuta (foloseste ZZ/LL/AAAA)')
+          const endDateObj = parseExcelDate(record.end_date) || startDateObj
+          if (endDateObj < startDateObj) throw new Error('data de sfarsit e inainte de data de start')
+
+          const startDateIso = dateToISO(startDateObj)
+          const endDateIso = dateToISO(endDateObj)
+          const startTime = parseExcelTime(record.start_time) || '09:00'
+          const endTime = parseExcelTime(record.end_time) || '17:00'
+          const courseType = (record.course_type ?? '').toString().trim() || 'TBD'
+
+          const trainerName = await ensureListValue('trainers', trainersCache, record.trainer)
+          const roomName = await ensureListValue('rooms', roomsCache, record.room)
+          const responsibleName = await ensureListValue('responsible_persons', respCache, record.responsible)
+
+          const roomConflict = await findConflict('room', roomName, startDateIso, endDateIso)
+          if (roomConflict) throw new Error(`sala "${roomName}" e deja rezervata de cursul "${roomConflict.name}" in acest interval`)
+          const trainerConflict = await findConflict('trainer', trainerName, startDateIso, endDateIso)
+          if (trainerConflict) throw new Error(`trainerul "${trainerName}" e deja programat la cursul "${trainerConflict.name}" in acest interval`)
+
+          const payload = {
+            name: String(record.name).trim(),
+            start_date: startDateIso,
+            end_date: endDateIso,
+            start_time: startTime,
+            end_time: endTime,
+            course_type: courseType,
+            trainer: trainerName,
+            room: roomName,
+            responsible: responsibleName,
+            participants_group: (record.participants_group ?? '').toString().trim() || null,
+            participants_count: record.participants_count ? Number(record.participants_count) : null,
+            course_area: (record.course_area ?? '').toString().trim() || null,
+            target_audience: (record.target_audience ?? '').toString().trim() || null,
+            invite_mail: (record.invite_mail ?? '').toString().trim() || null,
+            catering: (record.catering ?? '').toString().trim() || null,
+            notes: (record.notes ?? '').toString().trim() || null,
+            created_by: user.id,
+          }
+
+          const { error } = await supabase.from('courses').insert(payload)
+          if (error) throw new Error(error.message)
+          successCount++
+        } catch (err) {
+          failures.push({ row: excelRowNumber, reason: err.message })
+        }
+      }
+
+      setResults({ successCount, failures })
+    } catch (err) {
+      setResults({ successCount: 0, failures: [{ row: '-', reason: err.message }] })
+    } finally {
+      setImporting(false)
+      setProgress(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  return (
+    <div className="admin-section">
+      <h3>Import cursuri din Excel</h3>
+      <p className="admin-hint">
+        Incarca un fisier Excel cu cursuri (un curs pe rand) - se importa direct in calendar.
+        Descarca mai intai modelul de mai jos, ca sa fii sigur ca fisierul are coloanele potrivite.
+      </p>
+
+      <div className="admin-import-format-help">
+        <strong>Format asteptat</strong>
+        <ul>
+          <li><strong>Obligatorii</strong>: Denumire curs, Data start, Data sfarsit</li>
+          <li><strong>Format data</strong>: ZZ/LL/AAAA (ex: 24/08/2026) - functioneaza si daca celula e formatata ca data in Excel</li>
+          <li><strong>Format ora</strong>: HH:MM (ex: 09:00) - optional, implicit 09:00-17:00</li>
+          <li><strong>Tip curs</strong>: live / online / blended / e-learning / TBD - optional, implicit TBD</li>
+          <li><strong>Trainer, Sala, Responsabil</strong> - optionale, implicit TBD. Un nume care nu exista deja in lista se creeaza automat, exact ca la adaugarea manuala a unui curs.</li>
+          <li>Restul coloanelor (Grup participanti, Nr. participanti, Categorie, Public tinta, Mail invitare, Catering, Observatii) sunt optionale.</li>
+          <li><strong>Ordinea coloanelor nu conteaza</strong> - fiecare e recunoscuta dupa denumirea din antet (primul rand al fisierului), nu dupa pozitie.</li>
+          <li>Randurile cu sala sau trainer deja ocupate in acel interval sunt respinse automat (aceeasi regula ca la adaugarea manuala) - restul randurilor se importa normal; vezi raportul de mai jos, dupa import.</li>
+        </ul>
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+        <button type="button" className="secondary-btn" onClick={downloadTemplate}>
+          Descarca model Excel
+        </button>
+        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={importing}>
+          {importing ? 'Se importa...' : 'Incarca fisier Excel'}
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,.xls"
+          style={{ display: 'none' }}
+          onChange={handleFile}
+        />
+      </div>
+
+      {importing && progress && (
+        <p className="admin-hint">Se proceseaza randul {progress.done + 1} din {progress.total}...</p>
+      )}
+
+      {results && (
+        <div className={results.failures.length > 0 ? 'form-warning' : 'auth-info'} style={{ marginTop: 12 }}>
+          <strong>
+            {results.successCount} {results.successCount === 1 ? 'curs importat' : 'cursuri importate'} cu succes.
+          </strong>
+          {results.failures.length > 0 && (
+            <>
+              <div style={{ marginTop: 6 }}>
+                {results.failures.length} {results.failures.length === 1 ? 'rand respins' : 'randuri respinse'}:
+              </div>
+              <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+                {results.failures.map((f, i) => (
+                  <li key={i}>randul {f.row}: {f.reason}</li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function AdminPanel() {
   const [backupDirty, setBackupDirty] = useState(false)
 
@@ -494,6 +727,7 @@ export default function AdminPanel() {
         importHint="Fisier cu doua coloane: nume sala, capacitate (optional)."
       />
       <ListManager title="Responsabili" table="responsible_persons" />
+      <ImportCoursesPanel />
       <UsersManager />
       <BackupSettingsPanel onDirtyChange={setBackupDirty} />
     </div>

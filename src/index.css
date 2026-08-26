@@ -80,6 +80,18 @@ input:focus, select:focus, textarea:focus {
 .auth-card label { display: flex; flex-direction: column; gap: 5px; font-size: 13px; font-weight: 600; color: var(--text-muted); }
 .auth-error { background: #fdecea; color: var(--danger); padding: 8px 10px; border-radius: 6px; font-size: 13px; white-space: pre-line; }
 .auth-info { background: var(--accent-soft); color: var(--accent); padding: 8px 10px; border-radius: 6px; font-size: 13px; }
+
+.admin-import-format-help {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--text);
+}
+.admin-import-format-help ul { margin: 8px 0 0; padding-left: 18px; }
+.admin-import-format-help li { margin-bottom: 4px; }
 .auth-hint { margin: 4px 0 0; text-align: center; font-size: 12px; color: var(--text-muted); }
 
 .date-input-ro-wrapper { position: relative; display: flex; align-items: center; width: 100%; }
