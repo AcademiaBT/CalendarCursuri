@@ -96,7 +96,7 @@ async function main() {
     'Data sfarsit': c.end_date,
     'Ora start': c.start_time?.slice(0, 5) || '',
     'Ora sfarsit': c.end_time?.slice(0, 5) || '',
-    'Trainer': c.trainer || '',
+    'Trainer': (c.trainers || []).join(', '),
     'Sala': c.room || '',
     'Participanti (grup)': c.participants_group || '',
     'Nr. participanti': c.participants_count ?? '',
