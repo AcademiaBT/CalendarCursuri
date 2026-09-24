@@ -15,6 +15,8 @@ import CourseModal from './CourseModal'
 import MonthGrid from './MonthGrid'
 import WeekGrid, { DEFAULT_DAYS_BLOCK_WIDTH, DEFAULT_ATTR_COL_WIDTH, DEFAULT_ROW_HEIGHT } from './WeekGrid'
 import HelpTooltip from '../HelpTooltip'
+import DateInputRO from '../DateInputRO'
+import useNavbarOffset from '../../hooks/useNavbarOffset'
 import { suppressNextGhostClick } from '../../utils/dragHelpers'
 
 // Cate saptamani afisam stivuite, unele sub altele, in vizualizarea
@@ -29,6 +31,10 @@ export default function CalendarPage() {
   const { profile, updatePreferences, bumpTbdRefresh } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+  // centrul barei de meniu, pentru pastila "Se incarca cursurile..." - la
+  // fel ca alerta TBD (fixa, centrata pe bara), ca sa nu impinga tabelul de
+  // dedesubt in jos la fiecare comutare rapida de luna/saptamana
+  const { center: navbarCenter } = useNavbarOffset()
   const [viewMode, setViewMode] = useState('month') // 'month' | 'week'
   const [anchorDate, setAnchorDate] = useState(new Date())
   const [courses, setCourses] = useState([])
@@ -280,6 +286,20 @@ export default function CalendarPage() {
         <h2>{viewMode === 'month' ? formatMonthTitle(anchorDate) : weekRangeTitle}</h2>
         <button onClick={goToNext}>{viewMode === 'month' ? 'Luna urmatoare' : 'Saptamana urmatoare'} →</button>
         <button className="secondary-btn" onClick={() => setAnchorDate(new Date())}>Azi</button>
+        <label className="jump-to-date">
+          <span>Salt la</span>
+          <DateInputRO
+            value=""
+            onChange={(iso) => {
+              if (!iso) return
+              // "T00:00:00" evita ca data aleasa sa "alunece" cu o zi in
+              // urma, in functie de fusul orar - parsam explicit ca ora
+              // locala, nu UTC (vezi discutia anterioara despre acest bug)
+              const parsed = new Date(`${iso}T00:00:00`)
+              if (!isNaN(parsed)) setAnchorDate(parsed)
+            }}
+          />
+        </label>
 
         <div className="view-mode-toggle">
           <button
@@ -395,7 +415,11 @@ export default function CalendarPage() {
         )}
       </div>
 
-      {loading && <div className="loading-bar">Se incarca cursurile...</div>}
+      {loading && (
+        <div className="calendar-loading-badge" style={{ top: navbarCenter }}>
+          Se încarcă cursurile...
+        </div>
+      )}
       {layoutSaveError && (
         <div className="auth-error" style={{ marginBottom: 10 }}>
           Nu am putut salva dimensiunile alese ({layoutSaveError}). Cel mai probabil trebuie rulat
