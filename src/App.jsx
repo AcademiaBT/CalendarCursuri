@@ -8,6 +8,7 @@ import CalendarPage from './components/Calendar/CalendarPage'
 import AdminPanel from './components/Admin/AdminPanel'
 import ReportsPage from './components/Reports/ReportsPage'
 import SettingsPage from './components/Settings/SettingsPage'
+import ManualPage from './components/Manual/ManualPage'
 import TbdAlertModal from './components/Calendar/TbdAlertModal'
 import { SECURITY_FEATURES } from './config/securityFeatures'
 import { isPasswordExpired } from './utils/passwordValidation'
@@ -44,6 +45,7 @@ function AppShell() {
           <Route path="/" element={<CalendarPage />} />
           <Route path="/rapoarte" element={<ReportsPage />} />
           <Route path="/setari" element={<SettingsPage />} />
+          <Route path="/manual" element={<ManualPage />} />
           <Route
             path="/admin"
             element={isAdmin ? <AdminPanel /> : <Navigate to="/" replace />}

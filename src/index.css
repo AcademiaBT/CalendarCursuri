@@ -591,6 +591,32 @@ input:focus, select:focus, textarea:focus {
 .admin-page h2, .reports-page h2 { color: var(--navy); }
 .admin-hint { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
 .admin-section { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 20px; }
+
+/* pagina de Manual - cuprins cu ancore, sectiuni pe carduri, ca la Administrare */
+.manual-toc {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  max-width: 340px;
+}
+.manual-toc a { color: var(--accent); font-weight: 600; font-size: 13px; text-decoration: none; }
+.manual-toc a:hover { text-decoration: underline; }
+.manual-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  scroll-margin-top: 80px;
+}
+.manual-section h3 { margin-top: 0; color: var(--navy); }
+.manual-section ul { margin: 8px 0 0; padding-left: 20px; }
+.manual-section li { margin-bottom: 8px; line-height: 1.5; }
 .admin-add-form { display: flex; gap: 10px; margin: 12px 0 16px; }
 .admin-import-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
 .admin-import-label { cursor: pointer; }
