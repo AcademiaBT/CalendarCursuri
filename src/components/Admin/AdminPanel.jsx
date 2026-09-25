@@ -490,6 +490,44 @@ function ImportCoursesPanel() {
   const [importing, setImporting] = useState(false)
   const [progress, setProgress] = useState(null) // { done, total } | null
   const [results, setResults] = useState(null) // { successCount, failures: [{row, reason}] } | null
+  // randurile respinse SPECIFIC din cauza unei suprapuneri (sala sau
+  // trainer) - separat de "failures" (care include si alte motive de
+  // respingere, ex: lipseste denumirea) - doar acestea au sens exportate
+  // impreuna cu numele/data cursului existent peste care se suprapun
+  const [conflictRows, setConflictRows] = useState([])
+
+  // "ZZ/LL/AAAA" din "AAAA-LL-ZZ" (Supabase) - ca exportul sa arate exact ca
+  // formatul asteptat la reimport, nu formatul intern de baza de date
+  function isoToDMY(iso) {
+    if (!iso) return ''
+    const [y, m, d] = iso.split('-')
+    return `${d}/${m}/${y}`
+  }
+
+  // exportul randurilor respinse din cauza de suprapunere - acelasi format
+  // (coloane) ca modelul de import, plus doua coloane noi cu cursul
+  // existent peste care se suprapunea randul respins, ca sa poata fi
+  // corectat rapid (schimbi data/sala/trainer) si reincarcat
+  function downloadConflictRows() {
+    const headers = [
+      'Denumire curs', 'Data start', 'Data sfarsit', 'Ora start', 'Ora sfarsit',
+      'Tip curs', 'Trainer', 'Sala', 'Responsabil', 'Grup participanti',
+      'Nr participanti', 'Categorie', 'Public tinta', 'Mail invitare', 'Catering', 'Observatii',
+      'Curs existent (suprapunere)', 'Data start curs existent',
+    ]
+    const data = conflictRows.map((r) => [
+      r.name, r.startDMY, r.endDMY, r.startTime, r.endTime,
+      r.courseType, r.trainers, r.room, r.responsible,
+      r.participantsGroup, r.participantsCount, r.courseArea, r.targetAudience,
+      r.inviteMail, r.catering, r.notes,
+      r.conflictName, r.conflictStartDMY,
+    ])
+    const sheet = XLSX.utils.aoa_to_sheet([headers, ...data])
+    sheet['!cols'] = headers.map(() => ({ wch: 18 }))
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, sheet, 'Suprapuneri')
+    XLSX.writeFile(workbook, `randuri-respinse-suprapuneri-${new Date().toISOString().slice(0, 10)}.xlsx`)
+  }
 
   function downloadTemplate() {
     const headers = [
@@ -559,6 +597,7 @@ function ImportCoursesPanel() {
     if (!file) return
     setImporting(true)
     setResults(null)
+    setConflictRows([])
     setProgress(null)
 
     try {
@@ -595,6 +634,7 @@ function ImportCoursesPanel() {
       const respCache = respData || []
 
       const failures = []
+      const conflictRowsLocal = []
       let successCount = 0
 
       for (let i = 0; i < dataRows.length; i++) {
@@ -631,9 +671,17 @@ function ImportCoursesPanel() {
           const responsibleName = await ensureListValue('responsible_persons', respCache, record.responsible)
 
           const roomConflict = await findConflict('room', roomName, startDateIso, endDateIso)
-          if (roomConflict) throw new Error(`sala "${roomName}" e deja rezervata de cursul "${roomConflict.name}" in acest interval`)
+          if (roomConflict) {
+            const err = new Error(`sala "${roomName}" e deja rezervata de cursul "${roomConflict.name}" in acest interval`)
+            err.conflictCourse = roomConflict
+            throw err
+          }
           const trainerConflict = await findTrainersConflict(trainerNames, startDateIso, endDateIso)
-          if (trainerConflict) throw new Error(`cel putin unul dintre trainerii "${trainerNames.join(', ')}" e deja programat la cursul "${trainerConflict.name}" in acest interval`)
+          if (trainerConflict) {
+            const err = new Error(`cel putin unul dintre trainerii "${trainerNames.join(', ')}" e deja programat la cursul "${trainerConflict.name}" in acest interval`)
+            err.conflictCourse = trainerConflict
+            throw err
+          }
 
           const payload = {
             name: String(record.name).trim(),
@@ -662,10 +710,37 @@ function ImportCoursesPanel() {
           successCount++
         } catch (err) {
           failures.push({ row: excelRowNumber, reason: err.message })
+          if (err.conflictCourse) {
+            // pastram randul in ACELASI format ca modelul de import (nu
+            // valorile brute din Excel, ci cele deja normalizate - data in
+            // ZZ/LL/AAAA, traineri uniti prin virgula, etc.) - usor de
+            // corectat si reimportat direct din fisierul exportat
+            conflictRowsLocal.push({
+              name: String(record.name || '').trim(),
+              startDMY: isoToDMY(startDateIso),
+              endDMY: isoToDMY(endDateIso),
+              startTime,
+              endTime,
+              courseType,
+              trainers: trainerNames.join(', '),
+              room: roomName,
+              responsible: responsibleName,
+              participantsGroup: (record.participants_group ?? '').toString().trim(),
+              participantsCount: record.participants_count ?? '',
+              courseArea: (record.course_area ?? '').toString().trim(),
+              targetAudience: (record.target_audience ?? '').toString().trim(),
+              inviteMail: (record.invite_mail ?? '').toString().trim(),
+              catering: (record.catering ?? '').toString().trim(),
+              notes: (record.notes ?? '').toString().trim(),
+              conflictName: err.conflictCourse.name,
+              conflictStartDMY: isoToDMY(err.conflictCourse.start_date),
+            })
+          }
         }
       }
 
       setResults({ successCount, failures })
+      setConflictRows(conflictRowsLocal)
     } catch (err) {
       setResults({ successCount: 0, failures: [{ row: '-', reason: err.message }] })
     } finally {
@@ -734,6 +809,16 @@ function ImportCoursesPanel() {
                   <li key={i}>randul {f.row}: {f.reason}</li>
                 ))}
               </ul>
+              {conflictRows.length > 0 && (
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  style={{ marginTop: 10 }}
+                  onClick={downloadConflictRows}
+                >
+                  Descarca randurile cu suprapunere ({conflictRows.length}) — Excel
+                </button>
+              )}
             </>
           )}
         </div>
