@@ -458,6 +458,14 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
       setError('Data de sfarsit nu poate fi inainte de data de start.')
       return
     }
+    // pe aceeasi zi, ora de sfarsit nu poate fi inainte de ora de start -
+    // altfel intervalul calculat in baza de date e invers, si Postgres
+    // respinge cu un mesaj tehnic ("range lower bound..."), nu unul
+    // inteligibil. Verificam noi, aici, cu un mesaj clar.
+    if (form.end_date === form.start_date && form.end_time && form.start_time && form.end_time < form.start_time) {
+      setError(`Ora de sfarsit (${form.end_time}) nu poate fi inainte de ora de start (${form.start_time}), in aceeasi zi.`)
+      return
+    }
 
     setBusy(true)
 

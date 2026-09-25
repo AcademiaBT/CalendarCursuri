@@ -566,34 +566,44 @@ function ImportCoursesPanel() {
   // incap intr-o singura sala) - semnaleaza conflict daca ORICARE dintre
   // salile randului e deja rezervata in acel interval. "Online" e exclusa,
   // la fel ca "TBD".
-  async function findRoomsConflict(roomNames, startDate, endDate) {
+  async function findRoomsConflict(roomNames, startDate, endDate, startTime, endTime) {
     const real = (roomNames || []).filter((r) => r && r !== 'TBD' && r !== 'Online')
     if (real.length === 0) return null
     const { data, error } = await supabase
       .from('courses')
-      .select('id, name, start_date, end_date')
+      .select('id, name, start_date, end_date, start_time, end_time')
       .overlaps('rooms', real)
       .eq('cancelled', false)
       .lte('start_date', endDate)
       .gte('end_date', startDate)
     if (error) throw new Error(error.message)
-    return (data || [])[0] || null
+    // filtrul de mai sus e doar pe DATA - doua cursuri in aceeasi zi, dar cu
+    // ore care nu se intersecteaza (ex: unul se termina 12:59, altul incepe
+    // 13:00), NU sunt un conflict real. Verificam si ora, la fel ca la
+    // adaugarea manuala a unui curs.
+    return (data || []).find((c) => {
+      if (!startTime || !endTime || !c.start_time || !c.end_time) return true
+      return c.start_time < endTime && startTime < c.end_time
+    }) || null
   }
 
   // varianta pentru lista de traineri (co-facilitare) - semnaleaza conflict
   // daca ORICARE dintre trainerii randului e deja programat in acel interval
-  async function findTrainersConflict(trainerNames, startDate, endDate) {
+  async function findTrainersConflict(trainerNames, startDate, endDate, startTime, endTime) {
     const real = (trainerNames || []).filter((t) => t && t !== 'TBD')
     if (real.length === 0) return null
     const { data, error } = await supabase
       .from('courses')
-      .select('id, name, start_date, end_date')
+      .select('id, name, start_date, end_date, start_time, end_time')
       .overlaps('trainers', real)
       .eq('cancelled', false)
       .lte('start_date', endDate)
       .gte('end_date', startDate)
     if (error) throw new Error(error.message)
-    return (data || [])[0] || null
+    return (data || []).find((c) => {
+      if (!startTime || !endTime || !c.start_time || !c.end_time) return true
+      return c.start_time < endTime && startTime < c.end_time
+    }) || null
   }
 
   async function handleFile(e) {
@@ -670,6 +680,13 @@ function ImportCoursesPanel() {
           endDateIso = dateToISO(endDateObj)
           startTime = parseExcelTime(record.start_time) || '09:00'
           endTime = parseExcelTime(record.end_time) || '17:00'
+          // pe aceeasi zi, ora de sfarsit nu poate fi inainte de ora de
+          // start - altfel intervalul calculat in baza de date e invers, si
+          // Postgres respinge cu un mesaj tehnic ("range lower bound..."),
+          // nu unul inteligibil. Verificam noi, aici, cu un mesaj clar.
+          if (startDateIso === endDateIso && endTime < startTime) {
+            throw new Error(`ora de sfarsit (${endTime}) nu poate fi inainte de ora de start (${startTime}), in aceeasi zi`)
+          }
           courseType = (record.course_type ?? '').toString().trim() || 'TBD'
 
           for (const rawTrainer of parseTrainersList(record.trainer)) {
@@ -682,13 +699,13 @@ function ImportCoursesPanel() {
           }
           responsibleName = await ensureListValue('responsible_persons', respCache, record.responsible)
 
-          const roomConflict = await findRoomsConflict(roomNames, startDateIso, endDateIso)
+          const roomConflict = await findRoomsConflict(roomNames, startDateIso, endDateIso, startTime, endTime)
           if (roomConflict) {
             const err = new Error(`cel putin una dintre salile "${roomNames.join(', ')}" e deja rezervata de cursul "${roomConflict.name}" in acest interval`)
             err.conflictCourse = roomConflict
             throw err
           }
-          const trainerConflict = await findTrainersConflict(trainerNames, startDateIso, endDateIso)
+          const trainerConflict = await findTrainersConflict(trainerNames, startDateIso, endDateIso, startTime, endTime)
           if (trainerConflict) {
             const err = new Error(`cel putin unul dintre trainerii "${trainerNames.join(', ')}" e deja programat la cursul "${trainerConflict.name}" in acest interval`)
             err.conflictCourse = trainerConflict
