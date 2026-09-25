@@ -234,7 +234,10 @@ export default function CalendarPage() {
     ? toISODate(monthGrid[monthGrid.length - 1].date)
     : toISODate(weeksToShow[weeksToShow.length - 1][6])
 
+  const hoverClearTimeout = useRef(null)
+
   function showHoverDetails(e, course) {
+    clearTimeout(hoverClearTimeout.current)
     const rect = e.currentTarget.getBoundingClientRect()
     const popoverWidth = 250
     let left = rect.left
@@ -249,9 +252,19 @@ export default function CalendarPage() {
     setHoveredCourseId(course.id)
   }
 
+  // mica intarziere (nu instant) la ascundere, anulabila - ca userul sa
+  // poata muta mouse-ul de pe bara/eticheta CATRE popover (ex: ca sa dea
+  // click pe "Cloneaza curs") fara ca popover-ul sa dispara chiar inainte
+  // sa ajunga acolo
   function clearHover() {
-    setHoverInfo(null)
-    setHoveredCourseId(null)
+    clearTimeout(hoverClearTimeout.current)
+    hoverClearTimeout.current = setTimeout(() => {
+      setHoverInfo(null)
+      setHoveredCourseId(null)
+    }, 200)
+  }
+  function cancelHoverClear() {
+    clearTimeout(hoverClearTimeout.current)
   }
 
   const loadCourses = useCallback(async () => {
@@ -468,7 +481,12 @@ export default function CalendarPage() {
       )}
 
       {hoverInfo && (
-        <div className="course-hover-popover" style={{ top: hoverInfo.top, left: hoverInfo.left }}>
+        <div
+          className="course-hover-popover"
+          style={{ top: hoverInfo.top, left: hoverInfo.left }}
+          onMouseEnter={cancelHoverClear}
+          onMouseLeave={clearHover}
+        >
           <div className="popover-title">{hoverInfo.course.name}</div>
           {hoverInfo.course.cancelled && (
             <div className="popover-row"><span className="cancelled-badge">ANULAT</span></div>
@@ -499,6 +517,27 @@ export default function CalendarPage() {
           {hoverInfo.course.responsible && (
             <div className="popover-row"><strong>Responsabil:</strong> {hoverInfo.course.responsible}</div>
           )}
+          {(hoverInfo.course.created_by_email || hoverInfo.course.updated_by_email) && (
+            <div className="popover-audit">
+              {hoverInfo.course.created_by_email && <div>Adăugat de: {hoverInfo.course.created_by_email}</div>}
+              {hoverInfo.course.updated_by_email && hoverInfo.course.updated_by_email !== hoverInfo.course.created_by_email && (
+                <div>Ultima modificare: {hoverInfo.course.updated_by_email}</div>
+              )}
+            </div>
+          )}
+          <button
+            type="button"
+            className="popover-clone-btn"
+            onClick={() => {
+              const course = hoverInfo.course
+              clearTimeout(hoverClearTimeout.current)
+              setHoverInfo(null)
+              setHoveredCourseId(null)
+              setModalState({ course, initialCloneMode: true })
+            }}
+          >
+            Cloneaza curs
+          </button>
         </div>
       )}
 
@@ -555,6 +594,7 @@ export default function CalendarPage() {
         <CourseModal
           initialDate={modalState.initialDate}
           course={modalState.course}
+          initialCloneMode={modalState.initialCloneMode}
           onClose={() => setModalState(null)}
           onSaved={() => {
             setModalState(null)

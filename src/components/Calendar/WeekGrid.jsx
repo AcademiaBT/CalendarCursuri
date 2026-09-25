@@ -2,6 +2,7 @@ import { Fragment, useState } from 'react'
 import { format, isToday as checkIsToday } from 'date-fns'
 import { ro } from 'date-fns/locale'
 import { supabase } from '../../supabaseClient'
+import { useAuth } from '../../contexts/AuthContext'
 import { toISODate, formatWeekRangeTitle } from '../../utils/dateHelpers'
 import { getBarStyle } from '../../utils/colors'
 import { workingDaysCount } from '../../utils/workingDays'
@@ -157,6 +158,7 @@ export default function WeekGrid({
   onDayHeaderClick, onCourseClick, onCourseHover, onCourseLeave, filtersActive,
   onInlineUpdated,
 }) {
+  const { user } = useAuth()
   // celula aflata in editare inline chiar acum - { courseId, key } | null -
   // "draft" tine textul in curs de tastare, separat de valoarea salvata
   const [editingCell, setEditingCell] = useState(null)
@@ -175,7 +177,10 @@ export default function WeekGrid({
     const raw = draft.trim()
     const value = col.inputType === 'number' ? (raw === '' ? null : Number(raw)) : (raw || null)
     setSavingCell(true)
-    const { error } = await supabase.from('courses').update({ [col.field]: value }).eq('id', course.id)
+    const { error } = await supabase
+      .from('courses')
+      .update({ [col.field]: value, updated_by_email: user.email })
+      .eq('id', course.id)
     setSavingCell(false)
     setEditingCell(null)
     setDraft('')

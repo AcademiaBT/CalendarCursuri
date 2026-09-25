@@ -653,6 +653,8 @@ function ImportCoursesPanel() {
             catering: (record.catering ?? '').toString().trim() || null,
             notes: (record.notes ?? '').toString().trim() || null,
             created_by: user.id,
+            created_by_email: user.email,
+            updated_by_email: user.email,
           }
 
           const { error } = await supabase.from('courses').insert(payload)

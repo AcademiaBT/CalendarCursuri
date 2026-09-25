@@ -452,11 +452,45 @@ input:focus, select:focus, textarea:focus {
   width: 250px;
   font-size: 12.5px;
   color: var(--text);
-  pointer-events: none;
+  /* era "none" (tooltip pur pasiv) - acum contine un buton clicabil
+     (Cloneaza curs), asa ca trebuie sa primeasca evenimente de mouse */
+  pointer-events: auto;
 }
 .popover-title { font-weight: 700; color: var(--navy); margin-bottom: 6px; font-size: 13px; }
 .popover-row { margin-bottom: 3px; }
 .popover-row strong { color: var(--text-muted); font-weight: 600; margin-right: 4px; }
+
+/* autor/ultima modificare - font mic, discret, ca sa nu consume spatiu util */
+.popover-audit {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.popover-clone-btn {
+  margin-top: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  font-size: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+}
+.popover-clone-btn:hover { background: var(--accent-soft); }
+
+/* aceeasi mentiune audit, in formularul complet de editare - imediat sub
+   titlu, font mic, ca sa nu concureze cu campurile propriu-zise */
+.course-audit-info {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 0 24px 8px;
+  margin-top: -8px;
+}
 
 /* ---------- Modal ---------- */
 .modal-backdrop {

@@ -106,7 +106,7 @@ function FuzzySuggestion({ suggestion, onAccept, onDismiss }) {
   )
 }
 
-export default function CourseModal({ initialDate, course, onClose, onSaved }) {
+export default function CourseModal({ initialDate, course, onClose, onSaved, initialCloneMode = false }) {
   const { user, profile, isAdmin } = useAuth()
   // la un curs nou, implicit responsabilul e chiar userul logat (primul din
   // lista lui, daca are mai multi asociati - vezi Administrare -> Useri) -
@@ -459,6 +459,9 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
       room: roomName,
       responsible: responsibleName,
       participants_count: form.participants_count ? Number(form.participants_count) : null,
+      // ultima persoana care a atins acest curs, la orice salvare - stocat
+      // direct ca email (nu doar UUID), ca sa fie afisabil fara alt query
+      updated_by_email: user.email,
     }
 
     try {
@@ -466,7 +469,12 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
         const { error } = await supabase.from('courses').update(payload).eq('id', course.id)
         if (error) throw error
       } else {
-        const { error } = await supabase.from('courses').insert({ ...payload, created_by: user.id })
+        // curs nou (inclusiv o clona) - autorul e chiar userul curent
+        const { error } = await supabase.from('courses').insert({
+          ...payload,
+          created_by: user.id,
+          created_by_email: user.email,
+        })
         if (error) throw error
       }
       onSaved()
@@ -522,6 +530,14 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
     setConflictWarning('')
   }
 
+  // daca modalul a fost deschis direct in modul clona (butonul "Cloneaza
+  // curs" de pe cardul de hover, nu cel din interiorul formularului),
+  // declanseaza aceeasi logica de clonare imediat, o singura data
+  useEffect(() => {
+    if (initialCloneMode) handleClone()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
@@ -529,6 +545,15 @@ export default function CourseModal({ initialDate, course, onClose, onSaved }) {
           <h2>{isEditing ? 'Editeaza curs' : isCloning ? 'Curs clonat — completeaza datele' : 'Adauga curs'}</h2>
           <button className="icon-btn" onClick={onClose}>✕</button>
         </div>
+
+        {isExistingCourse && (course.created_by_email || course.updated_by_email) && (
+          <div className="course-audit-info">
+            {course.created_by_email && <span>Adăugat de: {course.created_by_email}</span>}
+            {course.updated_by_email && course.updated_by_email !== course.created_by_email && (
+              <span> · Ultima modificare: {course.updated_by_email}</span>
+            )}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="course-form">
           <label className="span-2">
