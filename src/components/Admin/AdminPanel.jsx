@@ -648,6 +648,12 @@ function ImportCoursesPanel() {
           if (field) record[field] = rawRow[idx]
         })
 
+        // declarate aici (nu cu const, inauntrul try-ului de mai jos) ca sa
+        // fie vizibile si in catch - un bloc try/catch are scop-uri separate
+        // in JavaScript, "catch" nu vede variabilele declarate in "try"
+        let startDateIso, endDateIso, startTime, endTime, courseType
+        let trainerNames = [], roomName, responsibleName
+
         try {
           if (!record.name || !String(record.name).trim()) throw new Error('lipseste denumirea cursului')
 
@@ -656,19 +662,18 @@ function ImportCoursesPanel() {
           const endDateObj = parseExcelDate(record.end_date) || startDateObj
           if (endDateObj < startDateObj) throw new Error('data de sfarsit e inainte de data de start')
 
-          const startDateIso = dateToISO(startDateObj)
-          const endDateIso = dateToISO(endDateObj)
-          const startTime = parseExcelTime(record.start_time) || '09:00'
-          const endTime = parseExcelTime(record.end_time) || '17:00'
-          const courseType = (record.course_type ?? '').toString().trim() || 'TBD'
+          startDateIso = dateToISO(startDateObj)
+          endDateIso = dateToISO(endDateObj)
+          startTime = parseExcelTime(record.start_time) || '09:00'
+          endTime = parseExcelTime(record.end_time) || '17:00'
+          courseType = (record.course_type ?? '').toString().trim() || 'TBD'
 
-          const trainerNames = []
           for (const rawTrainer of parseTrainersList(record.trainer)) {
             const name = await ensureListValue('trainers', trainersCache, rawTrainer)
             if (!trainerNames.includes(name)) trainerNames.push(name)
           }
-          const roomName = await ensureListValue('rooms', roomsCache, record.room)
-          const responsibleName = await ensureListValue('responsible_persons', respCache, record.responsible)
+          roomName = await ensureListValue('rooms', roomsCache, record.room)
+          responsibleName = await ensureListValue('responsible_persons', respCache, record.responsible)
 
           const roomConflict = await findConflict('room', roomName, startDateIso, endDateIso)
           if (roomConflict) {
