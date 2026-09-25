@@ -1,4 +1,13 @@
 export default function ManualPage() {
+  // HashRouter foloseste hash-ul din URL pentru rutare (#/manual) - o ancora
+  // obisnuita (href="#calendar") ar schimba acel hash, iar router-ul ar
+  // interpreta-o gresit ca pe o ruta noua, trimitand userul in altă parte
+  // din aplicatie. In loc de ancore, facem scroll manual la sectiune, fara
+  // sa atingem deloc hash-ul din URL.
+  function jumpTo(id) {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
     <div className="manual-page">
       <h2>Manualul aplicației</h2>
@@ -8,12 +17,12 @@ export default function ManualPage() {
       </p>
 
       <nav className="manual-toc">
-        <a href="#calendar">1. Calendar</a>
-        <a href="#curs">2. Adăugarea și editarea unui curs</a>
-        <a href="#rapoarte">3. Rapoarte</a>
-        <a href="#setari">4. Setări</a>
-        <a href="#administrare">5. Administrare</a>
-        <a href="#alerte">6. Alerta „Cursuri neclarificate"</a>
+        <button type="button" onClick={() => jumpTo('calendar')}>1. Calendar</button>
+        <button type="button" onClick={() => jumpTo('curs')}>2. Adăugarea și editarea unui curs</button>
+        <button type="button" onClick={() => jumpTo('rapoarte')}>3. Rapoarte</button>
+        <button type="button" onClick={() => jumpTo('setari')}>4. Setări</button>
+        <button type="button" onClick={() => jumpTo('administrare')}>5. Administrare</button>
+        <button type="button" onClick={() => jumpTo('alerte')}>6. Alerta „Cursuri neclarificate"</button>
       </nav>
 
       <section id="calendar" className="manual-section">
