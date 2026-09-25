@@ -525,19 +525,34 @@ export default function CalendarPage() {
               )}
             </div>
           )}
-          <button
-            type="button"
-            className="popover-clone-btn"
-            onClick={() => {
-              const course = hoverInfo.course
-              clearTimeout(hoverClearTimeout.current)
-              setHoverInfo(null)
-              setHoveredCourseId(null)
-              setModalState({ course, initialCloneMode: true })
-            }}
-          >
-            Cloneaza curs
-          </button>
+          <div className="popover-actions">
+            <button
+              type="button"
+              className="popover-edit-btn"
+              onClick={() => {
+                const course = hoverInfo.course
+                clearTimeout(hoverClearTimeout.current)
+                setHoverInfo(null)
+                setHoveredCourseId(null)
+                setModalState({ course })
+              }}
+            >
+              Editeaza curs
+            </button>
+            <button
+              type="button"
+              className="popover-clone-btn"
+              onClick={() => {
+                const course = hoverInfo.course
+                clearTimeout(hoverClearTimeout.current)
+                setHoverInfo(null)
+                setHoveredCourseId(null)
+                setModalState({ course, initialCloneMode: true })
+              }}
+            >
+              Cloneaza curs
+            </button>
+          </div>
         </div>
       )}
 

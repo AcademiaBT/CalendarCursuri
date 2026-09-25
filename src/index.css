@@ -482,6 +482,20 @@ input:focus, select:focus, textarea:focus {
   cursor: pointer;
 }
 .popover-clone-btn:hover { background: var(--accent-soft); }
+.popover-actions { display: flex; gap: 6px; margin-top: 8px; }
+.popover-actions .popover-clone-btn { margin-top: 0; width: auto; flex: 1; }
+.popover-edit-btn {
+  flex: 1;
+  padding: 5px 8px;
+  font-size: 12px;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+.popover-edit-btn:hover { filter: brightness(0.95); }
 
 /* aceeasi mentiune audit, in formularul complet de editare - imediat sub
    titlu, font mic, ca sa nu concureze cu campurile propriu-zise */
