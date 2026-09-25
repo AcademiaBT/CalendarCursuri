@@ -9,7 +9,7 @@ export const COLUMN_ALIASES = {
   end_time: ['ora sfarsit', 'ora final', 'ora de sfarsit', 'end time'],
   course_type: ['tip curs', 'tip', 'course type'],
   trainer: ['trainer', 'traineri', 'trainers'],
-  room: ['sala', 'room'],
+  room: ['sala', 'room', 'sali', 'rooms'],
   responsible: ['responsabil', 'responsible'],
   participants_group: ['grup participanti', 'grup', 'participants group'],
   participants_count: ['nr participanti', 'nr. participanti', 'numar participanti', 'participanti', 'nr part'],
@@ -117,6 +117,16 @@ export function parseExcelTime(value) {
 // (co-facilitare) - ex: "Ion Popescu, Maria Ionescu". Textul e impartit,
 // fiecare bucata curatata de spatii; celula goala/lipsa -> ["TBD"].
 export function parseTrainersList(rawValue) {
+  const text = (rawValue ?? '').toString().trim()
+  if (!text) return ['TBD']
+  const parts = text.split(',').map((p) => p.trim()).filter(Boolean)
+  return parts.length > 0 ? parts : ['TBD']
+}
+
+// aceeasi logica, pentru celula "Sala" - poate avea mai multe sali separate
+// prin virgula (cursuri cu multi participanti, care nu incap intr-o
+// singura sala)
+export function parseRoomsList(rawValue) {
   const text = (rawValue ?? '').toString().trim()
   if (!text) return ['TBD']
   const parts = text.split(',').map((p) => p.trim()).filter(Boolean)

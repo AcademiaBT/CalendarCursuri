@@ -95,7 +95,7 @@ export default function ReportsPage() {
       .order('start_time', { ascending: true })
 
     if (filters.trainer) query = query.contains('trainers', [filters.trainer])
-    if (filters.room) query = query.eq('room', filters.room)
+    if (filters.room) query = query.contains('rooms', [filters.room])
     if (filters.courseType) query = query.eq('course_type', filters.courseType)
     if (filters.responsible) query = query.eq('responsible', filters.responsible)
     if (filters.category) query = query.eq('course_area', filters.category)
@@ -109,7 +109,7 @@ export default function ReportsPage() {
       // orice curs cu cel putin un atribut obligatoriu inca nedecis -
       // responsible poate fi si gol/null (nu doar literal "TBD"), vezi
       // acelasi rationament ca la alerta de la logare
-      query = query.or('trainers.cs.{TBD},room.eq.TBD,responsible.eq.TBD,responsible.is.null')
+      query = query.or('trainers.cs.{TBD},rooms.cs.{TBD},responsible.eq.TBD,responsible.is.null')
     }
     if (filters.hideCancelled) query = query.eq('cancelled', false)
 
@@ -314,6 +314,7 @@ export default function ReportsPage() {
                   // exporturile PDF/Excel, ca sa fie consecvent peste tot
                   const tbd = (v) => (!v || v === 'TBD' ? 'report-tbd-cell' : undefined)
                   const trainersMissing = !c.trainers || c.trainers.length === 0 || c.trainers.includes('TBD')
+                  const roomsMissing = !c.rooms || c.rooms.length === 0 || c.rooms.includes('TBD')
                   return (
                     <tr key={c.id} className={c.cancelled ? 'report-row-cancelled' : undefined}>
                       <td>
@@ -327,7 +328,9 @@ export default function ReportsPage() {
                       <td className={trainersMissing ? 'report-tbd-cell' : undefined}>
                         {c.trainers?.length > 0 ? c.trainers.join(', ') : 'TBD'}
                       </td>
-                      <td className={tbd(c.room)}>{c.room}</td>
+                      <td className={roomsMissing ? 'report-tbd-cell' : undefined}>
+                        {c.rooms?.length > 0 ? c.rooms.join(', ') : 'TBD'}
+                      </td>
                       <td>{c.participants_count}</td>
                       <td className={tbd(c.responsible)}>{c.responsible}</td>
                       <td>{c.course_area || '—'}</td>

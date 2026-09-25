@@ -50,7 +50,7 @@ export default function TbdAlertModal({ profile, refreshKey, onEditCourse }) {
           .eq('cancelled', false)
           .gte('end_date', todayIso)
           .lte('start_date', untilIso)
-          .or('trainers.cs.{TBD},room.eq.TBD')
+          .or('trainers.cs.{TBD},rooms.cs.{TBD}')
       )
     }
 
@@ -86,7 +86,7 @@ export default function TbdAlertModal({ profile, refreshKey, onEditCourse }) {
   function missingLabels(c) {
     const missing = []
     if (!c.trainers || c.trainers.length === 0 || c.trainers.includes('TBD')) missing.push('Trainer')
-    if (c.room === 'TBD') missing.push('Sala')
+    if (!c.rooms || c.rooms.length === 0 || c.rooms.includes('TBD')) missing.push('Sala')
     if (!c.responsible || c.responsible === 'TBD') missing.push('Responsabil')
     return missing
   }

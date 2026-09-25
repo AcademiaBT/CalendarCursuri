@@ -12,7 +12,7 @@ const HEADERS = [
 const TBD_CHECKS = {
   1: (c) => !c.course_type || c.course_type === 'TBD',
   5: (c) => !c.trainers || c.trainers.length === 0 || c.trainers.includes('TBD'),
-  6: (c) => !c.room || c.room === 'TBD',
+  6: (c) => !c.rooms || c.rooms.length === 0 || c.rooms.includes('TBD'),
   9: (c) => !c.responsible || c.responsible === 'TBD',
 }
 
@@ -34,7 +34,7 @@ export function exportCoursesToPdf(courses, { title = 'Raport cursuri', filtersL
     c.end_date,
     `${c.start_time?.slice(0, 5) || ''}-${c.end_time?.slice(0, 5) || ''}`,
     c.trainers?.length > 0 ? c.trainers.join(', ') : '-',
-    c.room || '-',
+    c.rooms?.length > 0 ? c.rooms.join(', ') : '-',
     c.participants_group || '-',
     c.participants_count ?? '-',
     c.responsible || '-',

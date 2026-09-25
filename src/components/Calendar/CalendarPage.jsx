@@ -502,8 +502,8 @@ export default function CalendarPage() {
           {hoverInfo.course.trainers?.length > 0 && (
             <div className="popover-row"><strong>Traineri:</strong> {hoverInfo.course.trainers.join(', ')}</div>
           )}
-          {hoverInfo.course.room && (
-            <div className="popover-row"><strong>Sala:</strong> {hoverInfo.course.room}</div>
+          {hoverInfo.course.rooms?.length > 0 && (
+            <div className="popover-row"><strong>Sali:</strong> {hoverInfo.course.rooms.join(', ')}</div>
           )}
           {(hoverInfo.course.participants_group || hoverInfo.course.participants_count) && (
             <div className="popover-row">
@@ -582,7 +582,7 @@ export default function CalendarPage() {
                       {style.unclarified && <span className="unclarified-badge">TBD</span>}
                     </div>
                     <div className="day-detail-item-sub">
-                      {(c.trainers || []).join(', ') || '—'} · {c.room || '—'}
+                      {(c.trainers || []).join(', ') || '—'} · {(c.rooms || []).join(', ') || '—'}
                     </div>
                   </div>
                 )

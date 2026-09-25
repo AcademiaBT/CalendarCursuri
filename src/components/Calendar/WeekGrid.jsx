@@ -36,7 +36,7 @@ function courseSpanInWeek(course, weekDays) {
 export const BAR_FIELD_OPTIONS = [
   { key: 'time', label: 'Ora', getValue: (c) => (c.start_time ? c.start_time.slice(0, 5) : '') },
   { key: 'trainer', label: 'Trainer', getValue: (c) => (c.trainers || []).join(', ') },
-  { key: 'room', label: 'Sala', getValue: (c) => c.room || '' },
+  { key: 'room', label: 'Sala', getValue: (c) => (c.rooms || []).join(', ') },
   { key: 'responsible', label: 'Responsabil', getValue: (c) => c.responsible || '' },
   { key: 'course_type', label: 'Tip curs', getValue: (c) => c.course_type || '' },
   { key: 'participants_count', label: 'Nr. participanti', getValue: (c) => (c.participants_count ? String(c.participants_count) : '') },
@@ -65,7 +65,7 @@ export const ATTRIBUTE_COLUMN_OPTIONS = [
   },
   { key: 'participants_group', label: 'Participanti', getValue: (c) => c.participants_group || '', inlineEditable: true, field: 'participants_group', inputType: 'text' },
   { key: 'participants_count', label: 'Nr. participanti', getValue: (c) => (c.participants_count ? String(c.participants_count) : ''), inlineEditable: true, field: 'participants_count', inputType: 'number' },
-  { key: 'room', label: 'Sala', getValue: (c) => c.room || '' },
+  { key: 'room', label: 'Sala', getValue: (c) => (c.rooms || []).join(', ') },
   { key: 'responsible', label: 'Responsabil', getValue: (c) => c.responsible || '' },
   { key: 'course_area', label: 'Categorie', getValue: (c) => c.course_area || '', inlineEditable: true, field: 'course_area', inputType: 'text' },
   { key: 'target_audience', label: 'Public tinta', getValue: (c) => c.target_audience || '', inlineEditable: true, field: 'target_audience', inputType: 'text' },

@@ -11,7 +11,7 @@ const HEADERS = [
 const TBD_CHECKS = {
   2: (c) => !c.course_type || c.course_type === 'TBD',
   7: (c) => !c.trainers || c.trainers.length === 0 || c.trainers.includes('TBD'),
-  8: (c) => !c.room || c.room === 'TBD',
+  8: (c) => !c.rooms || c.rooms.length === 0 || c.rooms.includes('TBD'),
   11: (c) => !c.responsible || c.responsible === 'TBD',
 }
 
@@ -32,7 +32,7 @@ export async function exportCoursesToXlsx(courses) {
       c.start_time?.slice(0, 5) || '',
       c.end_time?.slice(0, 5) || '',
       c.trainers?.length > 0 ? c.trainers.join(', ') : '',
-      c.room || '',
+      c.rooms?.length > 0 ? c.rooms.join(', ') : '',
       c.participants_group || '',
       c.participants_count ?? '',
       c.responsible || '',

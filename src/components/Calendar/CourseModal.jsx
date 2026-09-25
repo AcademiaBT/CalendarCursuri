@@ -15,22 +15,22 @@ const COURSE_TYPES = ['TBD', 'live', 'online', 'blended', 'e-learning']
 // formularului editabil.
 const FORM_FIELDS = [
   'name', 'course_type', 'start_date', 'end_date', 'start_time', 'end_time',
-  'trainers', 'room', 'participants_group', 'participants_count',
+  'trainers', 'rooms', 'participants_group', 'participants_count',
   'responsible', 'invite_mail', 'catering', 'notes', 'course_area', 'target_audience',
   'cancelled',
 ]
 
 // sala/tip curs/responsabil sunt obligatorii; cursurile mai vechi, salvate
 // inainte de aceasta regula, pot avea valoarea goala - le tratam ca "TBD"
-// la afisare. "trainers" e o lista (co-facilitare) - la fel, ramane cel
-// putin ["TBD"] daca vine goala.
+// la afisare. "trainers" si "rooms" sunt liste (co-facilitare / mai multe
+// sali) - la fel, raman cel putin ["TBD"] daca vin goale.
 function pickFormFields(source) {
   const result = {}
   for (const key of FORM_FIELDS) {
     result[key] = source[key] ?? ''
   }
   result.trainers = Array.isArray(source.trainers) && source.trainers.length > 0 ? source.trainers : ['TBD']
-  if (!result.room) result.room = 'TBD'
+  result.rooms = Array.isArray(source.rooms) && source.rooms.length > 0 ? source.rooms : ['TBD']
   if (!result.course_type) result.course_type = 'TBD'
   if (!result.responsible) result.responsible = 'TBD'
   result.cancelled = Boolean(source.cancelled)
@@ -45,7 +45,7 @@ const emptyForm = (startDate, defaultResponsible) => ({
   start_time: '09:00',
   end_time: '17:00',
   trainers: ['TBD'],
-  room: 'TBD',
+  rooms: ['TBD'],
   participants_group: '',
   participants_count: '',
   responsible: defaultResponsible || 'TBD',
@@ -129,6 +129,8 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
   // textul din campul "adauga trainer" - separat de form.trainers (lista
   // deja adaugata), ca sa poata fi golit dupa fiecare adaugare
   const [trainerInput, setTrainerInput] = useState('')
+  // la fel, pentru campul "adauga sala"
+  const [roomInput, setRoomInput] = useState('')
   // { field, suggestion } | null - un singur banner de similaritate activ
   // odata, pentru campul pe care userul tocmai l-a parasit (onBlur)
   const [fuzzyHint, setFuzzyHint] = useState(null)
@@ -221,6 +223,24 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
       return { ...f, trainers: next.length > 0 ? next : ['TBD'] }
     })
   }
+  // aceleasi functii, pentru lista de sali (cursuri cu multi participanti,
+  // care nu incap intr-o singura sala)
+  function addRoomToArray(rawName) {
+    const raw = (rawName || '').trim()
+    if (!raw) return
+    setForm((f) => {
+      const withoutTBD = f.rooms.filter((r) => r !== 'TBD')
+      const already = withoutTBD.some((r) => normalizeForCompare(r) === normalizeForCompare(raw))
+      const next = already ? withoutTBD : [...withoutTBD, raw]
+      return { ...f, rooms: next.length > 0 ? next : ['TBD'] }
+    })
+  }
+  function removeRoom(name) {
+    setForm((f) => {
+      const next = f.rooms.filter((r) => r !== name)
+      return { ...f, rooms: next.length > 0 ? next : ['TBD'] }
+    })
+  }
   // click pe "+" (sau Enter) langa campul de adaugare trainer - daca
   // valoarea scrisa nu exista si nu seamana cu nimic, o adauga direct; daca
   // seamana cu ceva existent, arata bannerul si ASTEAPTA raspunsul userului
@@ -240,14 +260,33 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
     addTrainerToArray(raw)
     setTrainerInput('')
   }
-  // pentru Trainer, "accepta"/"respinge" adauga in lista (numele sugerat,
-  // respectiv ce a scris userul) - pentru celelalte campuri (Sala/
-  // Responsabil/Categorie/Public tinta), suprascrie valoarea, ca pana acum
+  // aceeasi logica, pentru campul de adaugare sala
+  function handleAddRoom() {
+    const raw = roomInput.trim()
+    if (!raw) return
+    const existingNames = rooms.map((r) => r.name)
+    const alreadyExists = existingNames.some((n) => normalizeForCompare(n) === normalizeForCompare(raw))
+    if (!alreadyExists) {
+      const suggestion = findFuzzyMatch(raw, existingNames)
+      if (suggestion) {
+        setFuzzyHint({ field: 'room', suggestion, pendingValue: raw })
+        return
+      }
+    }
+    addRoomToArray(raw)
+    setRoomInput('')
+  }
+  // pentru Trainer/Sala, "accepta"/"respinge" adauga in lista (numele
+  // sugerat, respectiv ce a scris userul) - pentru celelalte campuri
+  // (Responsabil/Categorie/Public tinta), suprascrie valoarea, ca pana acum
   function acceptFuzzy() {
     if (!fuzzyHint) return
     if (fuzzyHint.field === 'trainer') {
       addTrainerToArray(fuzzyHint.suggestion)
       setTrainerInput('')
+    } else if (fuzzyHint.field === 'room') {
+      addRoomToArray(fuzzyHint.suggestion)
+      setRoomInput('')
     } else {
       update(fuzzyHint.field, fuzzyHint.suggestion)
     }
@@ -257,6 +296,9 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
     if (fuzzyHint?.field === 'trainer' && fuzzyHint.pendingValue) {
       addTrainerToArray(fuzzyHint.pendingValue)
       setTrainerInput('')
+    } else if (fuzzyHint?.field === 'room' && fuzzyHint.pendingValue) {
+      addRoomToArray(fuzzyHint.pendingValue)
+      setRoomInput('')
     }
     setFuzzyHint(null)
   }
@@ -272,19 +314,20 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
     if (checked) setForm((f) => ({ ...f, end_date: f.start_date }))
   }
 
-  async function findFieldConflict(field, value) {
-    // "Online" nu e o sala fizica - la fel ca "TBD", nu se verifica
-    // conflict pentru ea (dar doar la campul "room" - la trainer/responsabil
-    // "Online" ar fi un nume normal, fara sens special)
-    if (!value || value === 'TBD' || (field === 'room' && value === 'Online')) return null
+  // varianta pentru lista de sali (cursuri cu multi participanti, care nu
+  // incap intr-o singura sala) - semnaleaza conflict daca ORICARE dintre
+  // salile selectate e deja rezervata in acest interval, la alt curs
+  // (aceeasi regula ca in trigger-ul din baza de date). "Online" e exclusa,
+  // la fel ca "TBD" - nu e o sala fizica, nu se aplica limita de "un curs
+  // odata".
+  async function findRoomsConflict(roomNames) {
+    const real = (roomNames || []).filter((r) => r && r !== 'TBD' && r !== 'Online')
+    if (real.length === 0) return null
 
     let query = supabase
       .from('courses')
       .select('id, name, start_date, end_date, start_time, end_time')
-      // ilike (nu eq) - case-insensitive, ca "arad" scris cu minuscule sa
-      // gaseasca la fel de bine conflictul cu "Arad" deja existent in baza
-      // de date, indiferent cum a fost scrisa valoarea in formular
-      .ilike(field, value)
+      .overlaps('rooms', real)
       .eq('cancelled', false)
       .lte('start_date', form.end_date)
       .gte('end_date', form.start_date)
@@ -295,7 +338,6 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
     if (error) throw error
 
     return (data || []).find((c) => {
-      // fara ora precizata pe una din cele doua programari => consideram conflict pe toata ziua
       if (!form.start_time || !form.end_time || !c.start_time || !c.end_time) return true
       return c.start_time < form.end_time && form.start_time < c.end_time
     }) || null
@@ -339,9 +381,9 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
     const timeout = setTimeout(async () => {
       try {
         const messages = []
-        const roomConflict = await findFieldConflict('room', form.room)
+        const roomConflict = await findRoomsConflict(form.rooms)
         if (roomConflict) {
-          messages.push(`Sala "${form.room}" e deja rezervata in aceasta perioada de cursul "${roomConflict.name}".`)
+          messages.push(`Cel putin una dintre salile alese e deja rezervata in aceasta perioada de cursul "${roomConflict.name}".`)
         }
         const trainerConflict = await findTrainersConflict(form.trainers)
         if (trainerConflict) {
@@ -354,7 +396,7 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
     }, 500)
     return () => clearTimeout(timeout)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(form.trainers), form.room, form.start_date, form.end_date, form.start_time, form.end_time, form.cancelled])
+  }, [JSON.stringify(form.trainers), JSON.stringify(form.rooms), form.start_date, form.end_date, form.start_time, form.end_time, form.cancelled])
 
   // "Ion popescu" / "ION POPESCU" / "ion POPESCU" -> "Ion Popescu" - fiecare
   // cuvant incepe cu majuscula, restul literelor mici. Aplicata doar la
@@ -397,6 +439,17 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
     return canonical.length > 0 ? canonical : ['TBD']
   }
 
+  // aceeasi logica, pentru lista de sali
+  async function ensureRoomsList(rawRooms) {
+    const canonical = []
+    for (const raw of rawRooms) {
+      if (!raw || raw === 'TBD') continue
+      const name = await ensureListValue('rooms', rooms, raw)
+      if (!canonical.some((n) => normalizeForCompare(n) === normalizeForCompare(name))) canonical.push(name)
+    }
+    return canonical.length > 0 ? canonical : ['TBD']
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
@@ -408,10 +461,10 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
 
     setBusy(true)
 
-    let trainerNames, roomName, responsibleName
+    let trainerNames, roomNames, responsibleName
     try {
       trainerNames = await ensureTrainersList(form.trainers)
-      roomName = await ensureListValue('rooms', rooms, form.room)
+      roomNames = await ensureRoomsList(form.rooms)
       responsibleName = await ensureListValue('responsible_persons', responsiblePersons, form.responsible)
     } catch (err) {
       setError(err.message || 'Nu am putut adauga automat valoarea noua in lista.')
@@ -425,10 +478,10 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
       // curs anulat = nu mai ocupa sala/trainerul, deci nu mai are sens sa
       // il verificam impotriva altor cursuri
       if (!form.cancelled) {
-        const roomConflict = await findFieldConflict('room', roomName)
+        const roomConflict = await findRoomsConflict(roomNames)
         if (roomConflict) {
           conflictMessages.push(
-            `Sala "${roomName}" este deja rezervata in aceasta perioada de cursul "${roomConflict.name}" ` +
+            `Cel putin una dintre salile "${roomNames.join(', ')}" este deja rezervata in aceasta perioada de cursul "${roomConflict.name}" ` +
             `(${roomConflict.start_date} - ${roomConflict.end_date}${roomConflict.start_time ? `, ${roomConflict.start_time.slice(0, 5)}-${roomConflict.end_time?.slice(0, 5)}` : ''}).`
           )
         }
@@ -456,7 +509,7 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
     const payload = {
       ...form,
       trainers: trainerNames,
-      room: roomName,
+      rooms: roomNames,
       responsible: responsibleName,
       participants_count: form.participants_count ? Number(form.participants_count) : null,
       // ultima persoana care a atins acest curs, la orice salvare - stocat
@@ -480,7 +533,7 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
       onSaved()
     } catch (err) {
       const rawMessage = err.message || ''
-      const isRoomRace = err.code === '23P01' && rawMessage.includes('courses_no_room_overlap')
+      const isRoomRace = err.code === '23P01' && rawMessage.includes('salile alese')
       const isTrainerRace = err.code === '23P01' && rawMessage.includes('trainerii alesi')
       if (isRoomRace) {
         setError(
@@ -523,6 +576,7 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
       start_date: today,
       end_date: today,
       trainers: [...f.trainers],
+      rooms: [...f.rooms],
       cancelled: false,
     }))
     setSameDayCourse(true)
@@ -569,7 +623,7 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
                 checked={form.cancelled}
                 onChange={(e) => update('cancelled', e.target.checked)}
               />
-              Curs anulat — ramane vizibil in calendar (marcat distinct), dar elibereaza sala si trainerii pentru alte cursuri
+              Curs anulat — ramane vizibil in calendar (marcat distinct), dar elibereaza salile si trainerii pentru alte cursuri
             </label>
           )}
 
@@ -640,29 +694,43 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
           </label>
           <div className="same-day-spacer" />
           <label>
-            Sala *
-            <div className="combo-field">
+            Sali *
+            <div className="trainer-tags">
+              {form.rooms.map((r) => (
+                <span key={r} className="trainer-tag">
+                  {r}
+                  {canEdit && (
+                    <button type="button" onClick={() => removeRoom(r)} aria-label={`Elimina ${r}`}>×</button>
+                  )}
+                </span>
+              ))}
+            </div>
+            <div className="combo-field trainer-add-row">
               <input
                 list="room-options"
-                required
                 disabled={!canEdit}
                 autoComplete="off"
-                value={form.room || ''}
-                onChange={(e) => update('room', e.target.value)}
-                onFocus={() => clearDefaultOnFocus('room', form.room)}
-                onBlur={() => {
-                  restoreDefaultOnBlur('room', form.room)
-                  checkFuzzy('room', form.room, rooms.map((r) => r.name))
-                }}
+                value={roomInput}
+                onChange={(e) => setRoomInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddRoom() } }}
+                placeholder="adauga sala..."
+                title="Adauga a doua sala (sau mai multe), pentru cursuri cu multi participanti care nu incap intr-o singura sala"
               />
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={handleAddRoom}
+                disabled={!canEdit || !roomInput.trim()}
+                title="Adauga a doua sala"
+              >
+                +
+              </button>
             </div>
             <datalist id="room-options">
               {roomNames.map((n) => <option key={n} value={n} />)}
             </datalist>
-            {fuzzyHint?.field === 'room' ? (
+            {fuzzyHint?.field === 'room' && (
               <FuzzySuggestion suggestion={fuzzyHint.suggestion} onAccept={acceptFuzzy} onDismiss={dismissFuzzy} />
-            ) : comboHint(form.room, rooms, { withCapacity: true }) && (
-              <span className="combo-hint">{comboHint(form.room, rooms, { withCapacity: true })}</span>
             )}
           </label>
 

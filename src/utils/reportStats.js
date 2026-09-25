@@ -6,7 +6,7 @@ import { courseDurationDays } from './colors'
 // fara sa intrebe pe altcineva.
 export const REPORT_EXPLANATIONS = {
   trainerLoad: 'Numarul de cursuri si zilele cumulate sustinute de fiecare trainer, in perioada selectata, cu procentul de ocupare din totalul zilelor intervalului. Un curs cu mai multi traineri (co-facilitare) conteaza pentru fiecare dintre ei.',
-  roomOccupancy: 'Numarul de cursuri si zilele cumulate in care fiecare sala a fost folosita, in perioada selectata, cu procentul de ocupare din totalul zilelor intervalului.',
+  roomOccupancy: 'Numarul de cursuri si zilele cumulate in care fiecare sala a fost folosita, in perioada selectata, cu procentul de ocupare din totalul zilelor intervalului. Un curs cu mai multe sali (participanti care nu incap intr-o singura sala) conteaza pentru fiecare dintre ele.',
   responsibleLoad: 'Numarul de cursuri si zilele cumulate gestionate de fiecare responsabil, in perioada selectata.',
   categoryMix: 'Distributia cursurilor pe categorii/arii (ex: Soft skills, Tehnic, Conformitate), in perioada selectata.',
   courseTypeMix: 'Distributia cursurilor pe tip (live, online, blended, e-learning), in perioada selectata.',
@@ -63,7 +63,7 @@ export const trainerLoadReport = (results) =>
   groupByArray(results, 'trainers', { missingLabel: 'TBD' })
 
 export const roomOccupancyReport = (results) =>
-  groupBy(results, 'room', { missingLabel: 'TBD' })
+  groupByArray(results, 'rooms', { missingLabel: 'TBD' })
 
 export const responsibleLoadReport = (results) =>
   groupBy(results, 'responsible', { missingLabel: 'TBD' })

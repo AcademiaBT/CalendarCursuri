@@ -4,7 +4,7 @@ import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../contexts/AuthContext'
 import useNavbarOffset from '../../hooks/useNavbarOffset'
 import { normalizeForCompare } from '../../utils/fuzzyMatch'
-import { matchHeaderToField, parseExcelDate, parseExcelTime, dateToISO, parseTrainersList } from '../../utils/courseImport'
+import { matchHeaderToField, parseExcelDate, parseExcelTime, dateToISO, parseTrainersList, parseRoomsList } from '../../utils/courseImport'
 
 // Nume de coloana acceptate in Excel pentru randul de antet (daca exista) -
 // orice alt text de pe prima coloana e tratat ca fiind chiar o valoare de
@@ -562,13 +562,17 @@ function ImportCoursesPanel() {
     return data.name
   }
 
-  async function findConflict(field, value, startDate, endDate) {
-    // "Online" nu e o sala fizica - la fel ca "TBD", exclusa din verificare
-    if (!value || value === 'TBD' || (field === 'room' && value === 'Online')) return null
+  // varianta pentru lista de sali (cursuri cu multi participanti, care nu
+  // incap intr-o singura sala) - semnaleaza conflict daca ORICARE dintre
+  // salile randului e deja rezervata in acel interval. "Online" e exclusa,
+  // la fel ca "TBD".
+  async function findRoomsConflict(roomNames, startDate, endDate) {
+    const real = (roomNames || []).filter((r) => r && r !== 'TBD' && r !== 'Online')
+    if (real.length === 0) return null
     const { data, error } = await supabase
       .from('courses')
       .select('id, name, start_date, end_date')
-      .ilike(field, value)
+      .overlaps('rooms', real)
       .eq('cancelled', false)
       .lte('start_date', endDate)
       .gte('end_date', startDate)
@@ -652,7 +656,7 @@ function ImportCoursesPanel() {
         // fie vizibile si in catch - un bloc try/catch are scop-uri separate
         // in JavaScript, "catch" nu vede variabilele declarate in "try"
         let startDateIso, endDateIso, startTime, endTime, courseType
-        let trainerNames = [], roomName, responsibleName
+        let trainerNames = [], roomNames = [], responsibleName
 
         try {
           if (!record.name || !String(record.name).trim()) throw new Error('lipseste denumirea cursului')
@@ -672,12 +676,15 @@ function ImportCoursesPanel() {
             const name = await ensureListValue('trainers', trainersCache, rawTrainer)
             if (!trainerNames.includes(name)) trainerNames.push(name)
           }
-          roomName = await ensureListValue('rooms', roomsCache, record.room)
+          for (const rawRoom of parseRoomsList(record.room)) {
+            const name = await ensureListValue('rooms', roomsCache, rawRoom)
+            if (!roomNames.includes(name)) roomNames.push(name)
+          }
           responsibleName = await ensureListValue('responsible_persons', respCache, record.responsible)
 
-          const roomConflict = await findConflict('room', roomName, startDateIso, endDateIso)
+          const roomConflict = await findRoomsConflict(roomNames, startDateIso, endDateIso)
           if (roomConflict) {
-            const err = new Error(`sala "${roomName}" e deja rezervata de cursul "${roomConflict.name}" in acest interval`)
+            const err = new Error(`cel putin una dintre salile "${roomNames.join(', ')}" e deja rezervata de cursul "${roomConflict.name}" in acest interval`)
             err.conflictCourse = roomConflict
             throw err
           }
@@ -696,7 +703,7 @@ function ImportCoursesPanel() {
             end_time: endTime,
             course_type: courseType,
             trainers: trainerNames,
-            room: roomName,
+            rooms: roomNames,
             responsible: responsibleName,
             participants_group: (record.participants_group ?? '').toString().trim() || null,
             participants_count: record.participants_count ? Number(record.participants_count) : null,
@@ -728,7 +735,7 @@ function ImportCoursesPanel() {
               endTime,
               courseType,
               trainers: trainerNames.join(', '),
-              room: roomName,
+              room: roomNames.join(', '),
               responsible: responsibleName,
               participantsGroup: (record.participants_group ?? '').toString().trim(),
               participantsCount: record.participants_count ?? '',
@@ -771,7 +778,8 @@ function ImportCoursesPanel() {
           <li><strong>Format ora</strong>: HH:MM (ex: 09:00) - optional, implicit 09:00-17:00</li>
           <li><strong>Tip curs</strong>: live / online / blended / e-learning / TBD - optional, implicit TBD</li>
           <li><strong>Trainer</strong> - optional, implicit TBD. Poti pune mai multi traineri intr-o singura celula, separati prin virgula (ex: "Ion Popescu, Maria Ionescu") - pentru cursuri cu co-facilitare.</li>
-          <li><strong>Sala, Responsabil</strong> - optionale, implicit TBD.</li>
+          <li><strong>Sala</strong> - optional, implicit TBD. La fel ca Trainer, poti pune mai multe sali intr-o singura celula, separate prin virgula - pentru cursuri cu multi participanti, care nu incap intr-o singura sala.</li>
+          <li><strong>Responsabil</strong> - optional, implicit TBD.</li>
           <li>Un nume (trainer/sala/responsabil) care nu exista deja in lista se creeaza automat, exact ca la adaugarea manuala a unui curs.</li>
           <li>Restul coloanelor (Grup participanti, Nr. participanti, Categorie, Public tinta, Mail invitare, Catering, Observatii) sunt optionale.</li>
           <li><strong>Ordinea coloanelor nu conteaza</strong> - fiecare e recunoscuta dupa denumirea din antet (primul rand al fisierului), nu dupa pozitie.</li>
