@@ -505,9 +505,9 @@ export default function CalendarPage() {
           {hoverInfo.course.rooms?.length > 0 && (
             <div className="popover-row"><strong>Sali:</strong> {hoverInfo.course.rooms.join(', ')}</div>
           )}
-          {(hoverInfo.course.participants_group || hoverInfo.course.participants_count) && (
+          {(hoverInfo.course.target_audience || hoverInfo.course.participants_count) && (
             <div className="popover-row">
-              <strong>Participanti:</strong> {hoverInfo.course.participants_group || ''}
+              <strong>Public tinta:</strong> {hoverInfo.course.target_audience || '—'}
               {hoverInfo.course.participants_count ? ` (${hoverInfo.course.participants_count})` : ''}
             </div>
           )}
