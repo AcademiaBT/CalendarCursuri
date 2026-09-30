@@ -240,25 +240,41 @@ export default function WeekGrid({
       <div className="week-block-label">{formatWeekRangeTitle(weekDays)}</div>
 
       {weekCourses.length === 0 ? (
-        <>
-          <div className="week-grid-header" style={{ gridTemplateColumns: `repeat(${DAY_COLS}, 1fr)` }}>
-            {weekDays.map((date) => (
+        <div
+          className="week-grid-scroll"
+          ref={scrollRef}
+          onScroll={(e) => onScrollSync?.(e.currentTarget.scrollLeft)}
+        >
+          <div
+            className="week-grid-unified"
+            style={{ gridTemplateColumns, gridTemplateRows: 'auto auto' }}
+          >
+            {weekDays.map((date, i) => (
               <div
                 key={date.toISOString()}
-                className={`week-day-header ${checkIsToday(date) ? 'week-day-header-today' : ''}`}
+                className={`week-day-header ${checkIsToday(date) ? 'week-day-header-today' : ''} ${i === DAY_COLS - 1 ? 'week-day-header-last' : ''}`}
+                style={{ gridColumn: i + 1, gridRow: 1 }}
                 onClick={() => onDayHeaderClick(date)}
               >
-                <div className="week-day-header-name">{format(date, 'EEEE', { locale: ro })}</div>
+                <div className="week-day-header-name">{format(date, 'EEEEE', { locale: ro })}</div>
                 <div className="week-day-header-date">{format(date, 'd MMM', { locale: ro })}</div>
               </div>
             ))}
+            {activeAttrColumns.map((col, i) => (
+              <div key={col.key} className="week-attr-header" style={{ gridColumn: DAY_COLS + i + 1, gridRow: 1 }}>
+                {col.label}
+              </div>
+            ))}
+            <div
+              className="week-grid-empty"
+              style={{ gridColumn: `1 / span ${DAY_COLS + activeAttrColumns.length}`, gridRow: 2 }}
+            >
+              {filtersActive
+                ? 'Niciun curs vizibil aici — verifică dacă ai filtre active în legenda de mai sus ("arată tot" le anulează).'
+                : 'Niciun curs programat in aceasta saptamana.'}
+            </div>
           </div>
-          <div className="week-grid-empty">
-            {filtersActive
-              ? 'Niciun curs vizibil aici — verifică dacă ai filtre active în legenda de mai sus ("arată tot" le anulează).'
-              : 'Niciun curs programat in aceasta saptamana.'}
-          </div>
-        </>
+        </div>
       ) : (
         <div
           className="week-grid-scroll"
