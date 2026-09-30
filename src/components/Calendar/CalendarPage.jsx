@@ -35,6 +35,35 @@ export default function CalendarPage() {
   // fel ca alerta TBD (fixa, centrata pe bara), ca sa nu impinga tabelul de
   // dedesubt in jos la fiecare comutare rapida de luna/saptamana
   const { center: navbarCenter } = useNavbarOffset()
+
+  // sincronizarea scroll-ului orizontal intre saptamani (vizualizarea
+  // Saptamanal): fiecare bloc de saptamana isi inregistreaza aici propriul
+  // container de scroll; cand oricare dintre ele (sau bara generala de jos)
+  // se misca, toate celelalte sunt aduse la aceeasi pozitie - un singur
+  // scroll "vizual", desi tehnic sunt containere separate.
+  const weekScrollNodes = useRef({})
+  const masterScrollRef = useRef(null)
+  const [masterScrollWidth, setMasterScrollWidth] = useState(0)
+
+  function registerWeekScroll(key, node) {
+    if (node) weekScrollNodes.current[key] = node
+    else delete weekScrollNodes.current[key]
+  }
+
+  function syncFromWeek(sourceKey, scrollLeft) {
+    if (masterScrollRef.current && masterScrollRef.current.scrollLeft !== scrollLeft) {
+      masterScrollRef.current.scrollLeft = scrollLeft
+    }
+    Object.entries(weekScrollNodes.current).forEach(([key, node]) => {
+      if (key !== sourceKey && node && node.scrollLeft !== scrollLeft) node.scrollLeft = scrollLeft
+    })
+  }
+
+  function syncFromMaster(scrollLeft) {
+    Object.values(weekScrollNodes.current).forEach((node) => {
+      if (node && node.scrollLeft !== scrollLeft) node.scrollLeft = scrollLeft
+    })
+  }
   const [viewMode, setViewMode] = useState('month') // 'month' | 'week'
   const [anchorDate, setAnchorDate] = useState(new Date())
   const [courses, setCourses] = useState([])
@@ -235,6 +264,19 @@ export default function CalendarPage() {
     : toISODate(weeksToShow[weeksToShow.length - 1][6])
 
   const hoverClearTimeout = useRef(null)
+
+  // masoara latimea totala de scroll a primei saptamani cu continut - toate
+  // saptamanile impart aceleasi latimi de coloane, deci una singura e
+  // suficienta ca reper pentru bara generala de scroll. Se remasoara ori de
+  // cate ori ceva ce afecteaza latimea se schimba (coloane redimensionate,
+  // coloane de atribute activate/dezactivate, numarul de saptamani afisate).
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      const firstNode = Object.values(weekScrollNodes.current)[0]
+      if (firstNode) setMasterScrollWidth(firstNode.scrollWidth)
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [daysBlockWidth, attrColWidths, attrColumns, weeksToShow, viewMode])
 
   function showHoverDetails(e, course) {
     clearTimeout(hoverClearTimeout.current)
@@ -455,28 +497,44 @@ export default function CalendarPage() {
         />
       ) : (
         <div className="week-stack">
-          {weeksToShow.map((weekDays) => (
-            <WeekGrid
-              key={toISODate(weekDays[0])}
-              weekDays={weekDays}
-              courses={visibleCourses}
-              barFields={barFields}
-              colorPrefs={colorPrefs}
-              attrColumns={attrColumns}
-              hoveredCourseId={hoveredCourseId}
-              daysBlockWidth={daysBlockWidth}
-              attrColWidths={attrColWidths}
-              rowHeight={rowHeight}
-              onDaysBlockWidthChange={setDaysBlockWidth}
-              onAttrColWidthChange={handleAttrColWidthChange}
-              onDayHeaderClick={(date) => setModalState({ initialDate: date })}
-              onCourseClick={(course) => setModalState({ course })}
-              onInlineUpdated={loadCourses}
-              onCourseHover={showHoverDetails}
-              onCourseLeave={clearHover}
-              filtersActive={hiddenLegendKeys.size > 0}
-            />
-          ))}
+          {weeksToShow.map((weekDays) => {
+            const weekKey = toISODate(weekDays[0])
+            return (
+              <WeekGrid
+                key={weekKey}
+                weekDays={weekDays}
+                courses={visibleCourses}
+                barFields={barFields}
+                colorPrefs={colorPrefs}
+                attrColumns={attrColumns}
+                hoveredCourseId={hoveredCourseId}
+                daysBlockWidth={daysBlockWidth}
+                attrColWidths={attrColWidths}
+                rowHeight={rowHeight}
+                onDaysBlockWidthChange={setDaysBlockWidth}
+                onAttrColWidthChange={handleAttrColWidthChange}
+                onDayHeaderClick={(date) => setModalState({ initialDate: date })}
+                onCourseClick={(course) => setModalState({ course })}
+                onInlineUpdated={loadCourses}
+                onCourseHover={showHoverDetails}
+                onCourseLeave={clearHover}
+                filtersActive={hiddenLegendKeys.size > 0}
+                scrollRef={(node) => registerWeekScroll(weekKey, node)}
+                onScrollSync={(scrollLeft) => syncFromWeek(weekKey, scrollLeft)}
+              />
+            )
+          })}
+          {masterScrollWidth > 0 && (
+            <div className="week-master-scrollbar-wrap">
+              <div
+                className="week-master-scrollbar"
+                ref={masterScrollRef}
+                onScroll={(e) => syncFromMaster(e.currentTarget.scrollLeft)}
+              >
+                <div style={{ width: masterScrollWidth, height: 1 }} />
+              </div>
+            </div>
+          )}
         </div>
       )}
 

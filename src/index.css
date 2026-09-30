@@ -746,7 +746,7 @@ input:focus, select:focus, textarea:focus {
 
 .week-grid-wrapper {
   background: var(--card);
-  border: 1px solid var(--border);
+  border: 1px solid #4b5563;
   border-radius: var(--radius);
   overflow: hidden;
 }
@@ -821,11 +821,31 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* container cu scroll orizontal propriu - antetul si randurile de cursuri
-   sunt in ACELASI grid, deci raman aliniate perfect cat timp derulezi */
-.week-grid-scroll { overflow-x: auto; }
+   sunt in ACELASI grid, deci raman aliniate perfect cat timp derulezi.
+   Scrollbar-ul nativ e ascuns vizual (overflow-x ramane "auto", functional
+   pentru sincronizare din JS) - userul vede si foloseste in schimb o
+   singura bara generala, comuna tuturor saptamanilor (vezi mai jos). */
+.week-grid-scroll {
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+}
+.week-grid-scroll::-webkit-scrollbar { display: none; } /* Chrome/Edge/Safari */
 .week-grid-unified {
   display: grid;
 }
+
+/* bara generala de scroll orizontal, comuna tuturor saptamanilor - fixa la
+   baza ecranului (nu trebuie sa cobori pagina ca sa o gasesti), sincronizata
+   in ambele sensuri cu fiecare saptamana in parte (vezi CalendarPage.jsx) */
+.week-master-scrollbar-wrap {
+  position: sticky;
+  bottom: 0;
+  z-index: 60;
+  background: var(--bg);
+  border-top: 1px solid #4b5563;
+  padding: 4px 0;
+}
+.week-master-scrollbar { overflow-x: auto; overflow-y: hidden; }
 
 .week-course-bar {
   border-radius: 4px;

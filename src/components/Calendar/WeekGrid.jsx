@@ -156,7 +156,7 @@ export default function WeekGrid({
   weekDays, courses, barFields, colorPrefs, attrColumns, hoveredCourseId, rowHeight,
   daysBlockWidth, attrColWidths, onDaysBlockWidthChange, onAttrColWidthChange,
   onDayHeaderClick, onCourseClick, onCourseHover, onCourseLeave, filtersActive,
-  onInlineUpdated,
+  onInlineUpdated, scrollRef, onScrollSync,
 }) {
   const { user } = useAuth()
   // celula aflata in editare inline chiar acum - { courseId, key } | null -
@@ -260,7 +260,11 @@ export default function WeekGrid({
           </div>
         </>
       ) : (
-        <div className="week-grid-scroll">
+        <div
+          className="week-grid-scroll"
+          ref={scrollRef}
+          onScroll={(e) => onScrollSync?.(e.currentTarget.scrollLeft)}
+        >
           <div
             className="week-grid-unified"
             style={{
