@@ -65,14 +65,26 @@ async function main() {
     ? (Date.now() - new Date(settings.last_sent_at).getTime()) / (1000 * 60 * 60 * 24)
     : Infinity
 
-  const isDue = daysSinceLast >= daysNeeded
+  // backup-ul SAPTAMANAL se trimite specific VINERI, nu "la 7 zile de la
+  // ultima trimitere, oricand ar cadea asta" - fix pe o zi anume, usor de
+  // anticipat (zilnic/lunar raman neschimbate, pe numarul de zile de mai sus)
+  const todayInBucharest = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Bucharest' }))
+  const isFriday = todayInBucharest.getDay() === 5 // 0=duminica ... 5=vineri
+
+  const isDue = settings.frequency === 'weekly'
+    ? isFriday && daysSinceLast >= 1 // vineri, si nu a mai trimis deja azi
+    : daysSinceLast >= daysNeeded
   const forceSend = FORCE_SEND === 'true'
 
   if (!isDue && !forceSend) {
-    console.log(
-      `Frecventa aleasa: ${settings.frequency} (la ${daysNeeded} zile). ` +
-      `Au trecut doar ${daysSinceLast.toFixed(1)} zile de la ultima trimitere - se sare peste azi.`
-    )
+    if (settings.frequency === 'weekly' && !isFriday) {
+      console.log('Frecventa aleasa: saptamanal (trimis doar vineri). Azi nu e vineri - se sare peste trimitere.')
+    } else {
+      console.log(
+        `Frecventa aleasa: ${settings.frequency} (la ${daysNeeded} zile). ` +
+        `Au trecut doar ${daysSinceLast.toFixed(1)} zile de la ultima trimitere - se sare peste azi.`
+      )
+    }
     return
   }
 
@@ -97,7 +109,7 @@ async function main() {
     'Ora start': c.start_time?.slice(0, 5) || '',
     'Ora sfarsit': c.end_time?.slice(0, 5) || '',
     'Trainer': (c.trainers || []).join(', '),
-    'Sala': c.room || '',
+    'Sala': (c.rooms || []).join(', '),
     'Participanti (grup)': c.participants_group || '',
     'Nr. participanti': c.participants_count ?? '',
     'Responsabil': c.responsible || '',

@@ -173,7 +173,7 @@ create table if not exists public.courses (
   start_time time,
   end_time time,
   trainers text[] not null default '{}',   -- lista de traineri (din lista trainers) - poate avea mai multi (co-facilitare)
-  room text,                               -- nume sala (din lista rooms)
+  rooms text[] not null default '{}',      -- lista de sali (din lista rooms) - poate avea mai multe (cursuri cu multi participanti, care nu incap intr-o singura sala)
   participants_group text,                 -- "Participanti" (ex: Grup 1)
   participants_count int,                  -- "Nr. Participanti"
   responsible text,                        -- Responsabil
@@ -187,6 +187,12 @@ create table if not exists public.courses (
   -- pentru altceva, fara sa piarda istoricul (spre deosebire de stergere)
   cancelled boolean not null default false,
   created_by uuid references auth.users(id),
+  -- email-ul autorului si al ultimei persoane care a modificat cursul -
+  -- stocat direct ca text (nu doar UUID-ul din created_by), ca sa poata fi
+  -- afisat oriunde fara sa faca un join separat cu auth.users (interzis
+  -- direct din client oricum, din motive de securitate)
+  created_by_email text,
+  updated_by_email text,
   created_at timestamptz default now(),
   updated_at timestamptz default now(),
   constraint end_after_start check (end_date >= start_date)
@@ -194,13 +200,13 @@ create table if not exists public.courses (
 
 create index if not exists idx_courses_start_date on public.courses(start_date);
 create index if not exists idx_courses_end_date on public.courses(end_date);
-create index if not exists idx_courses_room on public.courses(room);
-create index if not exists idx_courses_trainers on public.courses using gin(trainers);
 
 -- pentru instalari existente (tabelul exista deja fara aceste coloane)
 alter table public.courses add column if not exists course_area text;
 alter table public.courses add column if not exists target_audience text;
 alter table public.courses add column if not exists cancelled boolean not null default false;
+alter table public.courses add column if not exists created_by_email text;
+alter table public.courses add column if not exists updated_by_email text;
 
 -- migrare de la "trainer" (un singur text) la "trainers" (lista) - un curs
 -- poate avea acum mai multi traineri deodata (co-facilitare, predare in
@@ -218,6 +224,31 @@ begin
     alter table public.courses drop column trainer;
   end if;
 end $$;
+
+-- migrare de la "room" (un singur text) la "rooms" (lista) - un curs poate
+-- avea acum mai multe sali deodata (participanti care nu incap intr-o
+-- singura sala). Cursurile vechi ajung cu un singur element in lista.
+do $$
+begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'courses' and column_name = 'room') then
+    alter table public.courses add column if not exists rooms text[] not null default '{}';
+    update public.courses
+      set rooms = array[coalesce(nullif(btrim(room), ''), 'TBD')]
+      where rooms = '{}';
+    drop index if exists idx_courses_room;
+    alter table public.courses drop constraint if exists courses_no_room_overlap;
+    drop trigger if exists trg_check_room_conflict on public.courses;
+    alter table public.courses drop column room;
+  end if;
+end $$;
+
+-- indexurile GIN pentru trainers/rooms vin DUPA blocurile de migrare de mai
+-- sus - pe o instalare existenta (tabelul deja exista, "create table if not
+-- exists" de mai sus nu face nimic), coloanele "trainers"/"rooms" abia aici
+-- devin sigur create; un index creat mai devreme ar da "column does not
+-- exist" pe orice baza care nu are inca aceste coloane.
+create index if not exists idx_courses_trainers on public.courses using gin(trainers);
+create index if not exists idx_courses_rooms on public.courses using gin(rooms);
 
 -- pastreaza updated_at la zi
 create or replace function public.set_updated_at()
@@ -248,19 +279,21 @@ security definer set search_path = public
 as $$
 declare
   conflict_row record;
+  real_rooms text[];
 begin
   -- "Online" nu e o sala fizica - pot exista oricate cursuri online simultan,
   -- exact ca "TBD" (neclarificat), nu se aplica limita de "un curs odata".
   -- Un curs ANULAT nu se mai verifica deloc - nu blocheaza altele, si nici
-  -- nu poate fi el insusi blocat (eliberam sala pentru altceva).
-  if new.room is null or btrim(new.room) = '' or new.room = 'TBD' or new.room = 'Online' or new.cancelled then
+  -- nu poate fi el insusi blocat (eliberam salile pentru altceva).
+  real_rooms := array_remove(array_remove(new.rooms, 'TBD'), 'Online');
+  if real_rooms is null or array_length(real_rooms, 1) is null or new.cancelled then
     return new;
   end if;
 
   select id, name, start_date, end_date, start_time, end_time
   into conflict_row
   from public.courses
-  where room = new.room
+  where array_remove(array_remove(rooms, 'TBD'), 'Online') && real_rooms
     and not cancelled
     and id <> new.id
     and start_date <= new.end_date
@@ -273,8 +306,8 @@ begin
   limit 1;
 
   if found then
-    raise exception 'Sala "%" este deja rezervata in perioada %  -  % de cursul "%".',
-      new.room, conflict_row.start_date, conflict_row.end_date, conflict_row.name
+    raise exception 'Cel putin una dintre salile alese este deja rezervata in perioada %  -  % de cursul "%".',
+      conflict_row.start_date, conflict_row.end_date, conflict_row.name
       using errcode = '23P01';
   end if;
 
@@ -343,23 +376,17 @@ create trigger trg_check_trainer_conflict
 
 -- ------------------------------------------------------------
 -- 4ter. GARANTIE ABSOLUTA impotriva suprapunerii, la nivel de index
---       (exclusion constraint) - PENTRU SALA. Trigger-ul de mai sus da un
---       mesaj prietenos in aproape toate cazurile, dar - fiind de tip
---       "verifica, apoi salveaza" - are teoretic o fereastra minuscula de
---       risc daca doua salvari ajung absolut simultan. Regula de mai jos e
---       verificata de Postgres direct in index si nu poate fi ocolita,
---       indiferent de concurenta.
---
---       PENTRU TRAINERI, aceeasi garantie matematica NU e posibila cu
---       aceeasi usurinta de cand "trainers" a devenit lista (array): tipul
+--       (exclusion constraint) - acum NEDISPONIBILA nici pentru sala, nici
+--       pentru traineri, de cand ambele au devenit liste (array): tipul
 --       GiST necesar pentru exclusion constraints nu are, in Postgres
 --       standard, un operator nativ de "suprapunere intre liste de text"
---       (spre deosebire de o singura valoare text, unde "=" functioneaza
---       direct). Trainerii raman deci protejati DOAR de trigger-ul de mai
---       sus (verificare foarte fiabila, dar teoretic - in cazuri extrem de
+--       (spre deosebire de o singura valoare text, unde "=" functiona
+--       direct - asa a functionat "room" cat a fost text simplu). Sala si
+--       trainerii raman deci protejati DOAR de trigger-ele de mai sus
+--       (verificare foarte fiabila, dar teoretic - in cazuri extrem de
 --       rare de doua salvari absolut simultane - nu 100% matematic
---       garantata, ca la sala). Compromis constient, acceptat ca sa evitam
---       o restructurare mult mai mare (tabel separat pentru traineri).
+--       garantata). Compromis constient, acceptat ca sa evitam o
+--       restructurare mult mai mare (tabele separate pentru sali/traineri).
 -- ------------------------------------------------------------
 create extension if not exists btree_gist;
 
@@ -372,17 +399,9 @@ alter table public.courses
     )
   ) stored;
 
-alter table public.courses drop constraint if exists courses_no_room_overlap;
-alter table public.courses
-  add constraint courses_no_room_overlap
-  exclude using gist (room with =, period with &&)
-  -- "Online" exclus la fel ca "TBD" - nu e o sala fizica, nu are sens sa
-  -- limitam la un singur curs simultan (vezi si check_room_conflict() mai sus).
-  -- Cursurile ANULATE sunt si ele excluse - nu mai ocupa nimic.
-  where (room is not null and room <> '' and room <> 'TBD' and room <> 'Online' and not cancelled);
-
--- eliminat: courses_no_trainer_overlap (exclusion constraint) - nu se mai
--- poate aplica pe coloana "trainers" (lista) - vezi explicatia de mai sus
+-- eliminat: courses_no_room_overlap si courses_no_trainer_overlap
+-- (exclusion constraints) - nu se mai pot aplica pe coloane de tip lista
+-- (rooms/trainers) - vezi explicatia de mai sus
 
 -- ------------------------------------------------------------
 -- 4quater. SETARI BACKUP AUTOMAT (export xlsx complet trimis pe email,
@@ -520,38 +539,9 @@ create policy "backup_settings_admin_update" on public.backup_settings for updat
   using (public.is_admin());
 
 -- ------------------------------------------------------------
--- 6. DATE INITIALE (preluate din fisierul Excel atasat)
+-- 6. (fara date initiale precompletate - deploy curat; adaugi traineri,
+--    sali si responsabili manual, din Administrare, dupa prima logare)
 -- ------------------------------------------------------------
-insert into public.trainers (name) values
-  ('Trainer 1'), ('Trainer 2'), ('Trainer 3'), ('Trainer 4')
-on conflict (name) do nothing;
-
-insert into public.rooms (name, capacity) values
-  ('Orion', 120),
-  ('Velvet', 15),
-  ('Leo', 150),
-  ('Corp B - Etaj 1', 20),
-  ('Corp B - Etaj 2', 15),
-  ('Corp B - Etaj 3', 15),
-  ('Online', 1000),
-  ('Bacau', 50),
-  ('Craiova', null),
-  ('Timisoara', null),
-  ('Iasi', null),
-  ('Oradea', null),
-  ('Brasov', null),
-  ('Arad', null),
-  ('Slatina', null),
-  ('Constanta', null),
-  ('Bistrita', null),
-  ('Wonderland', null),
-  ('Sala Mentori', 15),
-  ('Valcea', null),
-  ('Predeal', null),
-  ('Bucuresti', null),
-  ('Miercurea Ciuc', null),
-  ('Baia Mare', null)
-on conflict (name) do nothing;
 
 -- ------------------------------------------------------------
 -- 7. Cum promovezi un user la rol admin (dupa ce si-a facut cont din aplicatie)
