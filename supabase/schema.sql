@@ -135,20 +135,32 @@ create trigger trg_lock_profile_privileged_fields
 create table if not exists public.trainers (
   id uuid primary key default gen_random_uuid(),
   name text not null unique,
+  company text,                            -- compania trainerului (informativ - verificarea de suprapunere ramane doar dupa nume)
   active boolean not null default true,
   created_at timestamptz default now()
 );
+alter table public.trainers add column if not exists company text;
 
 -- ------------------------------------------------------------
 -- 3. SALI (sursa dropdown + capacitate, editabila doar de admin)
+--    "name" + "oras" sunt UNICE IMPREUNA, nu doar numele - pot exista doua
+--    sali numite la fel ("Sala 1"), in orase diferite; identitatea reala
+--    afisata/stocata pe cursuri e intotdeauna "Nume (Oras)" (vezi
+--    utils/roomDisplay.js), ca cele doua sa ramana distincte peste tot
+--    (verificare conflict, afisare, rapoarte) fara nicio alta modificare.
 -- ------------------------------------------------------------
 create table if not exists public.rooms (
   id uuid primary key default gen_random_uuid(),
-  name text not null unique,
+  name text not null,
+  city text,
   capacity int,
   active boolean not null default true,
   created_at timestamptz default now()
 );
+alter table public.rooms add column if not exists city text;
+alter table public.rooms drop constraint if exists rooms_name_key;
+alter table public.rooms drop constraint if exists rooms_name_city_key;
+alter table public.rooms add constraint rooms_name_city_key unique (name, city);
 
 -- ------------------------------------------------------------
 -- 3bis. RESPONSABILI (sursa dropdown pentru campul "Responsabil" de pe
@@ -520,9 +532,13 @@ drop policy if exists "courses_insert" on public.courses;
 create policy "courses_insert" on public.courses for insert
   with check (auth.role() = 'authenticated' and created_by = auth.uid());
 
+-- orice user autentificat poate edita (UPDATE) orice curs, indiferent cine
+-- l-a creat - decizie intentionata, ca editarea sa nu fie blocata de cine
+-- a adaugat cursul initial. Stergerea (vezi courses_delete, mai jos) ramane
+-- neschimbata, restrictionata la creator sau admin.
 drop policy if exists "courses_update" on public.courses;
 create policy "courses_update" on public.courses for update
-  using (created_by = auth.uid() or public.is_admin());
+  using (auth.role() = 'authenticated');
 
 drop policy if exists "courses_delete" on public.courses;
 create policy "courses_delete" on public.courses for delete

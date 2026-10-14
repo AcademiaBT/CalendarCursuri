@@ -4,7 +4,7 @@ import { ro } from 'date-fns/locale'
 import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../contexts/AuthContext'
 import { toISODate, formatWeekRangeTitle } from '../../utils/dateHelpers'
-import { getBarStyle } from '../../utils/colors'
+import { getBarStyle, inviteDone } from '../../utils/colors'
 import { workingDaysCount } from '../../utils/workingDays'
 import { suppressNextGhostClick } from '../../utils/dragHelpers'
 
@@ -137,6 +137,7 @@ function CourseBar({ course, weekDays, barFields, colorPrefs, rowIndex, hoveredC
         )}
         {' '}
         <span className="week-course-bar-name">{course.name}</span>
+        {inviteDone(course) && <span className="invite-done-badge" title="Invitatie trimisa">✓</span>}
         {extraFieldsText && <span className="week-course-bar-extra"> — {extraFieldsText}</span>}
       </span>
       {style.cancelled && <span className="cancelled-badge">ANULAT</span>}
@@ -357,10 +358,11 @@ export default function WeekGrid({
                       </div>
                     )
                   }
+                  const isInviteDoneCell = col.key === 'invite_mail' && inviteDone(c)
                   return (
                     <div
                       key={`${c.id}-${col.key}`}
-                      className={`week-attr-cell ${c.id === hoveredCourseId ? 'week-attr-cell-highlighted' : ''} ${c.cancelled ? 'week-attr-cell-cancelled' : ''} ${col.inlineEditable ? 'week-attr-cell-inline' : ''}`}
+                      className={`week-attr-cell ${c.id === hoveredCourseId ? 'week-attr-cell-highlighted' : ''} ${c.cancelled ? 'week-attr-cell-cancelled' : ''} ${col.inlineEditable ? 'week-attr-cell-inline' : ''} ${isInviteDoneCell ? 'week-attr-cell-invite-done' : ''}`}
                       style={{ gridColumn: DAY_COLS + colIndex + 1, gridRow: rowIndex + 2 }}
                       title={col.inlineEditable ? 'Click pentru editare rapida' : (value || undefined)}
                       onClick={() => (col.inlineEditable && !c.cancelled ? startEdit(c, col) : onCourseClick(c))}

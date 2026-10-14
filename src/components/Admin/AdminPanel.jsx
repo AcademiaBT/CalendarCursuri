@@ -4,6 +4,7 @@ import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../contexts/AuthContext'
 import useNavbarOffset from '../../hooks/useNavbarOffset'
 import { normalizeForCompare } from '../../utils/fuzzyMatch'
+import { roomDisplayName, parseRoomDisplay } from '../../utils/roomDisplay'
 import { matchHeaderToField, parseExcelDate, parseExcelTime, dateToISO, parseTrainersList, parseRoomsList } from '../../utils/courseImport'
 
 // Nume de coloana acceptate in Excel pentru randul de antet (daca exista) -
@@ -562,6 +563,21 @@ function ImportCoursesPanel() {
     return data.name
   }
 
+  // varianta pentru sali - identitatea reala e "Nume (Oras)" (pot exista
+  // doua sali cu acelasi nume, in orase diferite), nu doar numele simplu.
+  async function ensureRoomValue(cache, rawValue) {
+    const value = (rawValue ?? '').toString().trim()
+    if (!value || value.toUpperCase() === 'TBD') return 'TBD'
+    const norm = normalizeForCompare(value)
+    const existing = cache.find((item) => normalizeForCompare(roomDisplayName(item)) === norm)
+    if (existing) return roomDisplayName(existing)
+    const { name, city } = parseRoomDisplay(value)
+    const { data, error } = await supabase.from('rooms').insert({ name, city, active: true }).select().single()
+    if (error) throw new Error(`nu am putut adauga "${value}" in lista de sali: ${error.message}`)
+    cache.push(data)
+    return roomDisplayName(data)
+  }
+
   // varianta pentru lista de sali (cursuri cu multi participanti, care nu
   // incap intr-o singura sala) - semnaleaza conflict daca ORICARE dintre
   // salile randului e deja rezervata in acel interval. "Online" e exclusa,
@@ -694,7 +710,7 @@ function ImportCoursesPanel() {
             if (!trainerNames.includes(name)) trainerNames.push(name)
           }
           for (const rawRoom of parseRoomsList(record.room)) {
-            const name = await ensureListValue('rooms', roomsCache, rawRoom)
+            const name = await ensureRoomValue(roomsCache, rawRoom)
             if (!roomNames.includes(name)) roomNames.push(name)
           }
           responsibleName = await ensureListValue('responsible_persons', respCache, record.responsible)
@@ -795,7 +811,7 @@ function ImportCoursesPanel() {
           <li><strong>Format ora</strong>: HH:MM (ex: 09:00) - optional, implicit 09:00-17:00</li>
           <li><strong>Tip curs</strong>: live / online / blended / e-learning / TBD - optional, implicit TBD</li>
           <li><strong>Trainer</strong> - optional, implicit TBD. Poti pune mai multi traineri intr-o singura celula, separati prin virgula (ex: "Ion Popescu, Maria Ionescu") - pentru cursuri cu co-facilitare.</li>
-          <li><strong>Sala</strong> - optional, implicit TBD. La fel ca Trainer, poti pune mai multe sali intr-o singura celula, separate prin virgula - pentru cursuri cu multi participanti, care nu incap intr-o singura sala.</li>
+          <li><strong>Sala</strong> - optional, implicit TBD. La fel ca Trainer, poti pune mai multe sali intr-o singura celula, separate prin virgula - pentru cursuri cu multi participanti, care nu incap intr-o singura sala. Daca exista doua sali cu acelasi nume, in orase diferite, scrie-l ca "Nume (Oras)" (ex: "Sala 1 (Cluj)"), ca sa fie clar despre care e vorba.</li>
           <li><strong>Responsabil</strong> - optional, implicit TBD.</li>
           <li>Un nume (trainer/sala/responsabil) care nu exista deja in lista se creeaza automat, exact ca la adaugarea manuala a unui curs.</li>
           <li>Restul coloanelor (Grup participanti, Nr. participanti, Categorie, Public tinta, Mail invitare, Catering, Observatii) sunt optionale.</li>
@@ -868,12 +884,20 @@ export default function AdminPanel() {
         Debifarea "Activ" ascunde elementul din formulare fara sa stearga cursurile existente.
         Poti adauga elemente unul cate unul, sau importa in bloc dintr-un fisier Excel.
       </p>
-      <ListManager title="Traineri" table="trainers" />
+      <ListManager
+        title="Traineri"
+        table="trainers"
+        extraColumns={[{ key: 'company', label: 'Companie', type: 'text' }]}
+        importHint="Fisier cu doua coloane: nume trainer, companie (optional)."
+      />
       <ListManager
         title="Sali"
         table="rooms"
-        extraColumns={[{ key: 'capacity', label: 'Capacitate', type: 'number' }]}
-        importHint="Fisier cu doua coloane: nume sala, capacitate (optional)."
+        extraColumns={[
+          { key: 'city', label: 'Oras', type: 'text' },
+          { key: 'capacity', label: 'Capacitate', type: 'number' },
+        ]}
+        importHint="Fisier cu trei coloane: nume sala, oras (optional), capacitate (optional). Pot exista sali cu acelasi nume, in orase diferite - raman distincte."
       />
       <ListManager title="Responsabili" table="responsible_persons" />
       <ImportCoursesPanel />

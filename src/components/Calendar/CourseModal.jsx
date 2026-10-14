@@ -3,6 +3,7 @@ import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../contexts/AuthContext'
 import { toISODate } from '../../utils/dateHelpers'
 import { normalizeForCompare, findFuzzyMatch } from '../../utils/fuzzyMatch'
+import { roomDisplayName, parseRoomDisplay } from '../../utils/roomDisplay'
 import DateInputRO from '../DateInputRO'
 
 const COURSE_TYPES = ['TBD', 'live', 'online', 'blended', 'e-learning']
@@ -129,8 +130,11 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
   // textul din campul "adauga trainer" - separat de form.trainers (lista
   // deja adaugata), ca sa poata fi golit dupa fiecare adaugare
   const [trainerInput, setTrainerInput] = useState('')
-  // la fel, pentru campul "adauga sala"
+  // la fel, pentru campul "adauga sala" - plus un camp separat pentru oras,
+  // folosit doar cand se creeaza o sala noua (daca alegi una deja
+  // existenta din sugestii, orasul ei e deja inclus in text)
   const [roomInput, setRoomInput] = useState('')
+  const [roomCityInput, setRoomCityInput] = useState('')
   // { field, suggestion } | null - un singur banner de similaritate activ
   // odata, pentru campul pe care userul tocmai l-a parasit (onBlur)
   const [fuzzyHint, setFuzzyHint] = useState(null)
@@ -143,7 +147,10 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
   // butonul Sterge dispare, "Curs anulat" dispare, etc.)
   const [isCloning, setIsCloning] = useState(false)
   const isEditing = isExistingCourse && !isCloning
-  const canEdit = !isEditing || isAdmin || course.created_by === user?.id
+  // orice user logat poate edita orice curs, indiferent cine l-a creat -
+  // stergerea ramane insa restrictionata (vezi canDelete mai jos), separat
+  const canEdit = true
+  const canDelete = !isEditing || isAdmin || course.created_by === user?.id
 
   useEffect(() => {
     supabase.from('trainers').select('*').order('name').then(({ data }) => setTrainers(data || []))
@@ -161,7 +168,7 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
   }, [])
 
   const trainerNames = ['TBD', ...trainers.filter((t) => t.active).map((t) => t.name)]
-  const roomNames = ['TBD', ...rooms.filter((r) => r.active).map((r) => r.name)]
+  const roomNames = ['TBD', ...rooms.filter((r) => r.active).map(roomDisplayName)]
   const responsibleNames = ['TBD', ...responsiblePersons.filter((r) => r.active).map((r) => r.name)]
 
   function update(field, value) {
@@ -260,21 +267,29 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
     addTrainerToArray(raw)
     setTrainerInput('')
   }
-  // aceeasi logica, pentru campul de adaugare sala
+  // aceeasi logica, pentru campul de adaugare sala - cu o diferenta: pot
+  // exista doua sali cu acelasi nume, in orase diferite, deci identitatea
+  // reala e "Nume (Oras)" (vezi utils/roomDisplay.js). Daca ce a scris
+  // userul se potriveste deja exact cu o sala existenta (a ales-o din
+  // sugestii, care includ deja orasul), folosim direct textul ales; altfel,
+  // combinam cu orasul scris separat (daca a completat ceva acolo).
   function handleAddRoom() {
     const raw = roomInput.trim()
     if (!raw) return
-    const existingNames = rooms.map((r) => r.name)
+    const existingNames = rooms.map(roomDisplayName)
     const alreadyExists = existingNames.some((n) => normalizeForCompare(n) === normalizeForCompare(raw))
+    const city = roomCityInput.trim()
+    const combined = alreadyExists || !city ? raw : `${raw} (${city})`
     if (!alreadyExists) {
-      const suggestion = findFuzzyMatch(raw, existingNames)
+      const suggestion = findFuzzyMatch(combined, existingNames)
       if (suggestion) {
-        setFuzzyHint({ field: 'room', suggestion, pendingValue: raw })
+        setFuzzyHint({ field: 'room', suggestion, pendingValue: combined })
         return
       }
     }
-    addRoomToArray(raw)
+    addRoomToArray(combined)
     setRoomInput('')
+    setRoomCityInput('')
   }
   // pentru Trainer/Sala, "accepta"/"respinge" adauga in lista (numele
   // sugerat, respectiv ce a scris userul) - pentru celelalte campuri
@@ -287,6 +302,7 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
     } else if (fuzzyHint.field === 'room') {
       addRoomToArray(fuzzyHint.suggestion)
       setRoomInput('')
+      setRoomCityInput('')
     } else {
       update(fuzzyHint.field, fuzzyHint.suggestion)
     }
@@ -299,6 +315,7 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
     } else if (fuzzyHint?.field === 'room' && fuzzyHint.pendingValue) {
       addRoomToArray(fuzzyHint.pendingValue)
       setRoomInput('')
+      setRoomCityInput('')
     }
     setFuzzyHint(null)
   }
@@ -439,12 +456,29 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
     return canonical.length > 0 ? canonical : ['TBD']
   }
 
-  // aceeasi logica, pentru lista de sali
+  // varianta pentru sali - identitatea reala e "Nume (Oras)" (pot exista
+  // doua sali cu acelasi nume, in orase diferite), nu doar numele simplu ca
+  // la ensureListValue. Daca valoarea scrisa se potriveste deja cu o sala
+  // existenta (dupa numele combinat), o foloseste ca atare; altfel, separa
+  // numele de oras si creeaza o sala noua, cu cele doua campuri completate.
+  async function ensureRoomValue(rawValue) {
+    const value = (rawValue || '').trim()
+    if (!value || value === 'TBD') return value
+    const existing = rooms.find((r) => normalizeForCompare(roomDisplayName(r)) === normalizeForCompare(value))
+    if (existing) return roomDisplayName(existing)
+    const { name, city } = parseRoomDisplay(value)
+    const { data, error } = await supabase.from('rooms').insert({ name: toProperCase(name), city, active: true }).select().single()
+    if (error) throw error
+    return roomDisplayName(data)
+  }
+
+  // aplica ensureRoomValue pe FIECARE sala din lista - returneaza numele
+  // combinate canonice, fara duplicate, fara sa amestece "TBD" cu nume reale
   async function ensureRoomsList(rawRooms) {
     const canonical = []
     for (const raw of rawRooms) {
       if (!raw || raw === 'TBD') continue
-      const name = await ensureListValue('rooms', rooms, raw)
+      const name = await ensureRoomValue(raw)
       if (!canonical.some((n) => normalizeForCompare(n) === normalizeForCompare(name))) canonical.push(name)
     }
     return canonical.length > 0 ? canonical : ['TBD']
@@ -724,6 +758,16 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
                 placeholder="adauga sala..."
                 title="Adauga a doua sala (sau mai multe), pentru cursuri cu multi participanti care nu incap intr-o singura sala"
               />
+              <input
+                disabled={!canEdit}
+                autoComplete="off"
+                value={roomCityInput}
+                onChange={(e) => setRoomCityInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddRoom() } }}
+                placeholder="oras (optional)"
+                title="Daca sala e noua, poti preciza orasul - util cand exista mai multe sali cu acelasi nume, in orase diferite"
+                style={{ maxWidth: 110 }}
+              />
               <button
                 type="button"
                 className="secondary-btn"
@@ -851,7 +895,7 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
           {error && <div className="auth-error span-2">{error}</div>}
 
           <div className="modal-actions span-2">
-            {isEditing && canEdit && (
+            {isEditing && canDelete && (
               <button type="button" className="danger-btn" onClick={handleDelete} disabled={busy}>
                 Sterge
               </button>

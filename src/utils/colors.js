@@ -12,6 +12,15 @@ const SCALE = [
   { key: 'overWeek', max: Infinity, bg: '#ffd6da', border: '#e0293f', text: '#a30f22', label: '> 1 saptamana' },
 ]
 
+// "Mail invitare" completat cu altceva decat TBD (sau gol) - semnaleaza ca
+// munca administrativa (trimiterea invitatiei) s-a terminat pentru acest
+// curs. Folosit pentru o bifa vizuala distincta in calendar si pentru
+// evidentierea celulei corespunzatoare din tabelul de atribute.
+export function inviteDone(course) {
+  const value = (course?.invite_mail || '').trim()
+  return value !== '' && value.toUpperCase() !== 'TBD'
+}
+
 export function courseDurationDays(startDate, endDate) {
   const start = typeof startDate === 'string' ? parseISO(startDate) : startDate
   const end = typeof endDate === 'string' ? parseISO(endDate) : endDate

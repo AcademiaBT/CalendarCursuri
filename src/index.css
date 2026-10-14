@@ -268,6 +268,22 @@ input:focus, select:focus, textarea:focus {
   margin-left: 4px;
   flex-shrink: 0;
 }
+
+/* "Mail invitare" completat cu altceva decat TBD - munca administrativa
+   (trimiterea invitatiei) s-a terminat pentru acest curs. Bifa verde pe
+   bara/chip (vizibila din prima privire pe calendar) + celula "Mail
+   invitare" evidentiata verde/bold in tabelul de atribute (Saptamanal) -
+   oglindeste exact mecanismul TBD (rosu/bold), dar inversat. */
+.invite-done-badge {
+  color: #1a7f37;
+  font-weight: 700;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+.week-attr-cell-invite-done {
+  color: #1a7f37;
+  font-weight: 700;
+}
 .course-chip-cancelled .course-chip-name,
 .week-course-bar-cancelled .week-course-bar-name,
 .week-attr-cell-cancelled,

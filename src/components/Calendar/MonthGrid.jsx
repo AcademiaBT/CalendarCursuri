@@ -1,6 +1,6 @@
 import { format } from 'date-fns'
 import { WEEKDAY_LABELS, coursesForDay } from '../../utils/dateHelpers'
-import { getBarStyle } from '../../utils/colors'
+import { getBarStyle, inviteDone } from '../../utils/colors'
 
 const MAX_VISIBLE_PER_DAY = 3
 
@@ -49,6 +49,7 @@ export default function MonthGrid({ grid, courses, colorPrefs, hoveredCourseId, 
                   >
                     <span className="course-chip-time">{c.start_time?.slice(0, 5) || ''}</span>
                     <span className="course-chip-name">{c.name}</span>
+                    {inviteDone(c) && <span className="invite-done-badge" title="Invitatie trimisa">✓</span>}
                     {style.cancelled && <span className="cancelled-badge">ANULAT</span>}
                     {style.unclarified && <span className="unclarified-badge">TBD</span>}
                   </div>
