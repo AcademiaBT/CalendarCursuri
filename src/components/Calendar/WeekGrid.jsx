@@ -118,7 +118,7 @@ function CourseBar({ course, weekDays, barFields, colorPrefs, rowIndex, hoveredC
 
   return (
     <div
-      className={`week-course-bar ${isHighlighted ? 'week-course-bar-highlighted' : ''} ${style.cancelled ? 'week-course-bar-cancelled' : ''}`}
+      className={`week-course-bar ${isHighlighted ? 'week-course-bar-highlighted' : ''} ${style.cancelled ? 'week-course-bar-cancelled' : ''} ${inviteDone(course) ? 'week-course-bar-invite-done' : ''}`}
       style={{
         gridColumn: `${startIdx + 1} / ${endIdx + 2}`,
         gridRow: rowIndex + 2, // +2: randul 1 e antetul
@@ -131,13 +131,13 @@ function CourseBar({ course, weekDays, barFields, colorPrefs, rowIndex, hoveredC
       onClick={() => onCourseClick(course)}
     >
       {continuesFromPrevious && <span className="week-course-bar-arrow" title="Continua din saptamana anterioara">◀</span>}
+      {inviteDone(course) && <span className="invite-done-pill" title="Invitatie trimisa">✓</span>}
       <span className="week-course-bar-text">
         {barFields.includes('time') && course.start_time && (
           <span className="week-course-bar-time">{course.start_time.slice(0, 5)}</span>
         )}
         {' '}
         <span className="week-course-bar-name">{course.name}</span>
-        {inviteDone(course) && <span className="invite-done-badge" title="Invitatie trimisa">✓</span>}
         {extraFieldsText && <span className="week-course-bar-extra"> — {extraFieldsText}</span>}
       </span>
       {style.cancelled && <span className="cancelled-badge">ANULAT</span>}

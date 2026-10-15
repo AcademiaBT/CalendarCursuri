@@ -38,7 +38,7 @@ export default function MonthGrid({ grid, courses, colorPrefs, hoveredCourseId, 
                 return (
                   <div
                     key={c.id}
-                    className={`course-chip ${c.id === hoveredCourseId ? 'course-chip-highlighted' : ''} ${style.cancelled ? 'course-chip-cancelled' : ''}`}
+                    className={`course-chip ${c.id === hoveredCourseId ? 'course-chip-highlighted' : ''} ${style.cancelled ? 'course-chip-cancelled' : ''} ${inviteDone(c) ? 'course-chip-invite-done' : ''}`}
                     style={{ background: style.bg, borderLeft: `4px solid ${style.border}`, color: style.text }}
                     onMouseEnter={(e) => onCourseHover(e, c)}
                     onMouseLeave={onCourseLeave}
@@ -47,9 +47,9 @@ export default function MonthGrid({ grid, courses, colorPrefs, hoveredCourseId, 
                       onCourseClick(c)
                     }}
                   >
+                    {inviteDone(c) && <span className="invite-done-pill" title="Invitatie trimisa">✓</span>}
                     <span className="course-chip-time">{c.start_time?.slice(0, 5) || ''}</span>
                     <span className="course-chip-name">{c.name}</span>
-                    {inviteDone(c) && <span className="invite-done-badge" title="Invitatie trimisa">✓</span>}
                     {style.cancelled && <span className="cancelled-badge">ANULAT</span>}
                     {style.unclarified && <span className="unclarified-badge">TBD</span>}
                   </div>

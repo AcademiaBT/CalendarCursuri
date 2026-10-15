@@ -270,15 +270,33 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* "Mail invitare" completat cu altceva decat TBD - munca administrativa
-   (trimiterea invitatiei) s-a terminat pentru acest curs. Bifa verde pe
-   bara/chip (vizibila din prima privire pe calendar) + celula "Mail
-   invitare" evidentiata verde/bold in tabelul de atribute (Saptamanal) -
-   oglindeste exact mecanismul TBD (rosu/bold), dar inversat. */
-.invite-done-badge {
-  color: #1a7f37;
+   (trimiterea invitatiei) s-a terminat pentru acest curs. Doua semnale,
+   ambele vizibile din prima privire pe calendar: o pastila plina, verde, cu
+   bifa alba, pusa la INCEPUTUL numelui (nu la final - ramane vizibila chiar
+   daca restul textului se trunchiaza), plus un contur verde gros pe tot
+   chip-ul/bara (nu schimba fundalul/culoarea aleasa dupa Durata/
+   Responsabil/Categorie, doar adauga conturul peste). In tabelul de
+   atribute (Saptamanal), celula "Mail invitare" ramane evidentiata verde/
+   bold - oglindeste exact mecanismul TBD (rosu/bold), dar inversat. */
+.invite-done-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #1a7f37;
+  color: white;
+  font-size: 10px;
   font-weight: 700;
-  margin-left: 4px;
   flex-shrink: 0;
+  margin-right: 4px;
+}
+.course-chip-invite-done {
+  box-shadow: inset 0 0 0 2px #1a7f37;
+}
+.week-course-bar-invite-done {
+  box-shadow: inset 0 0 0 2px #1a7f37;
 }
 .week-attr-cell-invite-done {
   color: #1a7f37;
