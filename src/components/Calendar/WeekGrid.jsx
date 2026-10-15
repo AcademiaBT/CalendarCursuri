@@ -358,7 +358,7 @@ export default function WeekGrid({
                       </div>
                     )
                   }
-                  const isInviteDoneCell = col.key === 'invite_mail' && inviteDone(c)
+                  const isInviteDoneCell = inviteDone(c)
                   return (
                     <div
                       key={`${c.id}-${col.key}`}
