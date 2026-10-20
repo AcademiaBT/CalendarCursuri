@@ -809,7 +809,7 @@ function ImportCoursesPanel() {
           <li><strong>Obligatorii</strong>: Denumire curs, Data start, Data sfarsit</li>
           <li><strong>Format data</strong>: ZZ/LL/AAAA (ex: 24/08/2026) - functioneaza si daca celula e formatata ca data in Excel</li>
           <li><strong>Format ora</strong>: HH:MM (ex: 09:00) - optional, implicit 09:00-17:00</li>
-          <li><strong>Tip curs</strong>: live / online / blended / e-learning / TBD - optional, implicit TBD</li>
+          <li><strong>Tip curs</strong>: live / online / blended / TBD - optional, implicit TBD</li>
           <li><strong>Trainer</strong> - optional, implicit TBD. Poti pune mai multi traineri intr-o singura celula, separati prin virgula (ex: "Ion Popescu, Maria Ionescu") - pentru cursuri cu co-facilitare.</li>
           <li><strong>Sala</strong> - optional, implicit TBD. La fel ca Trainer, poti pune mai multe sali intr-o singura celula, separate prin virgula - pentru cursuri cu multi participanti, care nu incap intr-o singura sala. Daca exista doua sali cu acelasi nume, in orase diferite, scrie-l ca "Nume (Oras)" (ex: "Sala 1 (Cluj)"), ca sa fie clar despre care e vorba.</li>
           <li><strong>Responsabil</strong> - optional, implicit TBD.</li>

@@ -9,7 +9,7 @@ export const REPORT_EXPLANATIONS = {
   roomOccupancy: 'Numarul de cursuri si zilele cumulate in care fiecare sala a fost folosita, in perioada selectata, cu procentul de ocupare din totalul zilelor intervalului. Un curs cu mai multe sali (participanti care nu incap intr-o singura sala) conteaza pentru fiecare dintre ele.',
   responsibleLoad: 'Numarul de cursuri si zilele cumulate gestionate de fiecare responsabil, in perioada selectata.',
   categoryMix: 'Distributia cursurilor pe categorii/arii (ex: Soft skills, Tehnic, Conformitate), in perioada selectata.',
-  courseTypeMix: 'Distributia cursurilor pe tip (live, online, blended, e-learning), in perioada selectata.',
+  courseTypeMix: 'Distributia cursurilor pe tip (live, online, blended), in perioada selectata.',
 }
 
 // true daca eticheta unui rand de statistica reprezinta valoare

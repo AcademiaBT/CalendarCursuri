@@ -189,7 +189,6 @@ export default function ReportsPage() {
             <option value="live">live</option>
             <option value="online">online</option>
             <option value="blended">blended</option>
-            <option value="e-learning">e-learning</option>
           </select>
         </label>
         <label>

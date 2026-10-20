@@ -6,7 +6,7 @@ import { normalizeForCompare, findFuzzyMatch } from '../../utils/fuzzyMatch'
 import { roomDisplayName, parseRoomDisplay } from '../../utils/roomDisplay'
 import DateInputRO from '../DateInputRO'
 
-const COURSE_TYPES = ['TBD', 'live', 'online', 'blended', 'e-learning']
+const COURSE_TYPES = ['TBD', 'live', 'online', 'blended']
 
 // Doar aceste campuri apartin formularului. Cursul incarcat din baza de date
 // (prin select('*')) mai contine si alte coloane - id, created_at, created_by,
