@@ -28,7 +28,7 @@ function courseLine(c) {
 
 // Lista de resurse (traineri sau sali), impartita in libere / ocupate.
 // Cele ocupate sunt restranse, cu cursul care le ocupa, ca sa fie clar DE CE.
-function ResourceGroup({ entries, freeLabel, busyLabel }) {
+function ResourceGroup({ entries, freeLabel, busyLabel, busyOpen = false }) {
   const free = entries.filter((e) => e.busy.length === 0)
   const busy = entries.filter((e) => e.busy.length > 0)
   return (
@@ -47,7 +47,7 @@ function ResourceGroup({ entries, freeLabel, busyLabel }) {
         </ul>
       )}
       {busy.length > 0 && (
-        <details className="availability-busy">
+        <details className="availability-busy" open={busyOpen}>
           <summary>{busyLabel} ({busy.length})</summary>
           <ul className="availability-list availability-list-busy">
             {busy.map((e) => (
@@ -286,12 +286,12 @@ export default function AvailabilityPage() {
             {mainRooms.length === 0 ? (
               <p className="admin-hint">Nicio sala care sa respecte filtrele alese.</p>
             ) : (
-              <ResourceGroup entries={mainRooms} freeLabel="Libere" busyLabel="Ocupate" />
+              <ResourceGroup entries={mainRooms} freeLabel="Libere" busyLabel="Ocupate" busyOpen />
             )}
             {noCityRooms.length > 0 && (
               <details className="availability-nocity">
                 <summary>Sali fara oras completat ({noCityRooms.length})</summary>
-                <ResourceGroup entries={noCityRooms} freeLabel="Libere" busyLabel="Ocupate" />
+                <ResourceGroup entries={noCityRooms} freeLabel="Libere" busyLabel="Ocupate" busyOpen />
               </details>
             )}
           </section>
