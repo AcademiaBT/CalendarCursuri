@@ -92,17 +92,32 @@ function startColumnResize(e, onDrag) {
   const startX = e.clientX
   let moved = false
 
+  function cleanup() {
+    window.removeEventListener('pointermove', onPointerMove)
+    window.removeEventListener('pointerup', onPointerUp)
+    window.removeEventListener('blur', onWindowBlur)
+    if (moved) suppressNextGhostClick()
+  }
   function onPointerMove(moveEvent) {
     moved = true
     onDrag(moveEvent.clientX - startX)
   }
   function onPointerUp() {
-    window.removeEventListener('pointermove', onPointerMove)
-    window.removeEventListener('pointerup', onPointerUp)
-    if (moved) suppressNextGhostClick()
+    cleanup()
+  }
+  // daca mouse-ul e eliberat in afara ferestrei browserului (alt monitor,
+  // alta aplicatie), "pointerup" nu mai ajunge niciodata la pagina -
+  // ascultatorii ar ramane agatati pe window, iar clickul fantoma care
+  // urmeaza dupa un drag n-ar mai fi suprimat (putea inchide neasteptat un
+  // modal deschis, daca "clickul" ajungea pe fundalul lui). Tratam
+  // pierderea focusului ferestrei ca sfarsitul drag-ului, la fel ca un
+  // "pointerup" normal.
+  function onWindowBlur() {
+    cleanup()
   }
   window.addEventListener('pointermove', onPointerMove)
   window.addEventListener('pointerup', onPointerUp)
+  window.addEventListener('blur', onWindowBlur)
 }
 
 function CourseBar({ course, weekDays, barFields, colorPrefs, rowIndex, hoveredCourseId, onCourseClick, onCourseHover, onCourseLeave }) {

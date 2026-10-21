@@ -126,15 +126,27 @@ export default function SettingsPage() {
       }
     }
 
-    function onPointerUp() {
+    function cleanup() {
       window.removeEventListener('pointermove', onPointerMove)
       window.removeEventListener('pointerup', onPointerUp)
+      window.removeEventListener('blur', onWindowBlur)
       setDraggingKey(null)
       markDirty()
+    }
+    function onPointerUp() {
+      cleanup()
+    }
+    // daca mouse-ul e eliberat in afara ferestrei browserului, "pointerup"
+    // nu mai ajunge niciodata la pagina - fara aceasta plasa de siguranta,
+    // starea de "tragere" ramanea blocata (vezi acelasi fix in
+    // CalendarPage.jsx si WeekGrid.jsx)
+    function onWindowBlur() {
+      cleanup()
     }
 
     window.addEventListener('pointermove', onPointerMove)
     window.addEventListener('pointerup', onPointerUp)
+    window.addEventListener('blur', onWindowBlur)
   }
 
   function updateColor(key, hex) {

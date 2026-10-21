@@ -1082,3 +1082,36 @@ input:focus, select:focus, textarea:focus {
   .stats-card { break-inside: avoid; border: 1px solid #ccc; }
 }
 
+/* pagina Disponibilitate - traineri si sali libere intr-o perioada aleasa */
+.availability-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 20px;
+  align-items: flex-end;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 18px;
+}
+.availability-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.availability-datetime { display: flex; gap: 8px; align-items: center; }
+.availability-panels { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
+.availability-panel {
+  flex: 1 1 340px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+}
+.availability-panel h3 { margin: 0 0 10px; color: var(--navy); }
+.availability-group { margin-bottom: 8px; }
+.availability-heading { font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+.availability-heading-free { color: #0f5132; }
+.availability-list { margin: 0; padding-left: 18px; }
+.availability-list li { margin-bottom: 4px; line-height: 1.4; }
+.availability-list-free li { color: #0f5132; }
+.availability-meta { color: var(--text-muted); font-weight: 400; font-size: 12px; }
+.availability-busy, .availability-nocity { margin-top: 10px; }
+.availability-busy summary, .availability-nocity summary { cursor: pointer; font-weight: 600; font-size: 13px; color: var(--text-muted); }
+.availability-busy-courses { margin: 2px 0 6px; padding-left: 16px; font-size: 12px; color: var(--text-muted); }

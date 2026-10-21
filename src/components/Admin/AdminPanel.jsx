@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import useNavbarOffset from '../../hooks/useNavbarOffset'
 import { normalizeForCompare } from '../../utils/fuzzyMatch'
 import { roomDisplayName, parseRoomDisplay } from '../../utils/roomDisplay'
+import { timesOverlap } from '../../utils/timeOverlap'
 import { matchHeaderToField, parseExcelDate, parseExcelTime, dateToISO, parseTrainersList, parseRoomsList } from '../../utils/courseImport'
 
 // Nume de coloana acceptate in Excel pentru randul de antet (daca exista) -
@@ -57,12 +58,14 @@ function ListManager({ title, table, extraColumns = [], importHint }) {
     else load()
   }
 
-  // Editare inline nume (+ coloane extra, ex: capacitate la sali). Doar
-  // aceasta lista se schimba - cursurile deja salvate raman cu numele
-  // vechi, neschimbate (istoricul e text, nu legatura catre acest rand -
-  // decizie intentionata, ca stergerea/redenumirea unui element sa nu
-  // strice cursurile trecute). Redenumirea afecteaza doar ce se alege de
-  // acum incolo in formularul de curs.
+  // Editare inline nume (+ coloane extra, ex: oras/capacitate la sali).
+  // La traineri/responsabili, doar aceasta lista se schimba - cursurile deja
+  // salvate raman cu numele vechi (istoricul e text, nu legatura catre acest
+  // rand - decizie intentionata). EXCEPTIE: la SALI, schimbarea numelui sau
+  // a orasului se propaga automat si in cursurile existente (trigger in
+  // baza de date, vezi sync_room_rename din schema.sql) - identitatea unei
+  // sali pe curs e "Nume (Oras)", iar verificarea de suprapunere si
+  // vizualizarea "Disponibilitate" depind de potrivirea exacta a textului.
   function startEdit(item) {
     setEditingId(item.id)
     setEditDraft({
@@ -597,10 +600,7 @@ function ImportCoursesPanel() {
     // ore care nu se intersecteaza (ex: unul se termina 12:59, altul incepe
     // 13:00), NU sunt un conflict real. Verificam si ora, la fel ca la
     // adaugarea manuala a unui curs.
-    return (data || []).find((c) => {
-      if (!startTime || !endTime || !c.start_time || !c.end_time) return true
-      return c.start_time < endTime && startTime < c.end_time
-    }) || null
+    return (data || []).find((c) => timesOverlap(startTime, endTime, c.start_time, c.end_time)) || null
   }
 
   // varianta pentru lista de traineri (co-facilitare) - semnaleaza conflict
@@ -616,10 +616,7 @@ function ImportCoursesPanel() {
       .lte('start_date', endDate)
       .gte('end_date', startDate)
     if (error) throw new Error(error.message)
-    return (data || []).find((c) => {
-      if (!startTime || !endTime || !c.start_time || !c.end_time) return true
-      return c.start_time < endTime && startTime < c.end_time
-    }) || null
+    return (data || []).find((c) => timesOverlap(startTime, endTime, c.start_time, c.end_time)) || null
   }
 
   async function handleFile(e) {

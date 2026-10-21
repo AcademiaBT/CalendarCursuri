@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { toISODate } from '../../utils/dateHelpers'
 import { normalizeForCompare, findFuzzyMatch } from '../../utils/fuzzyMatch'
 import { roomDisplayName, parseRoomDisplay } from '../../utils/roomDisplay'
+import { timesOverlap } from '../../utils/timeOverlap'
 import DateInputRO from '../DateInputRO'
 
 const COURSE_TYPES = ['TBD', 'live', 'online', 'blended']
@@ -354,10 +355,7 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
     const { data, error } = await query
     if (error) throw error
 
-    return (data || []).find((c) => {
-      if (!form.start_time || !form.end_time || !c.start_time || !c.end_time) return true
-      return c.start_time < form.end_time && form.start_time < c.end_time
-    }) || null
+    return (data || []).find((c) => timesOverlap(form.start_time, form.end_time, c.start_time, c.end_time)) || null
   }
 
   // varianta pentru lista de traineri (co-facilitare) - semnaleaza conflict
@@ -380,10 +378,7 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
     const { data, error } = await query
     if (error) throw error
 
-    return (data || []).find((c) => {
-      if (!form.start_time || !form.end_time || !c.start_time || !c.end_time) return true
-      return c.start_time < form.end_time && form.start_time < c.end_time
-    }) || null
+    return (data || []).find((c) => timesOverlap(form.start_time, form.end_time, c.start_time, c.end_time)) || null
   }
 
   // verificare de conflict in timp real, cat userul completeaza formularul -
@@ -501,12 +496,37 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
       return
     }
 
+    // text ramas necompletat in campurile "adauga trainer"/"adauga sala"
+    // (userul a scris, dar a uitat sa apese "+" sau Enter) se adauga automat
+    // aici, inainte de salvare - altfel se pierdea silentios, iar cursul
+    // ramanea cu TBD pe acel camp, fara nicio avertizare
+    function mergeArrayInput(baseArray, rawValue) {
+      const raw = (rawValue || '').trim()
+      if (!raw) return baseArray
+      const withoutTBD = baseArray.filter((v) => v !== 'TBD')
+      const already = withoutTBD.some((v) => normalizeForCompare(v) === normalizeForCompare(raw))
+      const next = already ? withoutTBD : [...withoutTBD, raw]
+      return next.length > 0 ? next : ['TBD']
+    }
+    const roomRaw = roomInput.trim()
+    const roomCity = roomCityInput.trim()
+    const roomAlreadyExists = rooms.some((r) => normalizeForCompare(roomDisplayName(r)) === normalizeForCompare(roomRaw))
+    const roomCombinedInput = roomRaw && roomCity && !roomAlreadyExists ? `${roomRaw} (${roomCity})` : roomRaw
+    const effectiveTrainers = mergeArrayInput(form.trainers, trainerInput)
+    const effectiveRooms = mergeArrayInput(form.rooms, roomCombinedInput)
+    if (trainerInput.trim() || roomRaw) {
+      setForm((f) => ({ ...f, trainers: effectiveTrainers, rooms: effectiveRooms }))
+      setTrainerInput('')
+      setRoomInput('')
+      setRoomCityInput('')
+    }
+
     setBusy(true)
 
     let trainerNames, roomNames, responsibleName
     try {
-      trainerNames = await ensureTrainersList(form.trainers)
-      roomNames = await ensureRoomsList(form.rooms)
+      trainerNames = await ensureTrainersList(effectiveTrainers)
+      roomNames = await ensureRoomsList(effectiveRooms)
       responsibleName = await ensureListValue('responsible_persons', responsiblePersons, form.responsible)
     } catch (err) {
       setError(err.message || 'Nu am putut adauga automat valoarea noua in lista.')
@@ -891,7 +911,7 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
             <textarea disabled={!canEdit} value={form.notes || ''} onChange={(e) => update('notes', e.target.value)} rows={2} />
           </label>
 
-          {conflictWarning && !error && <div className="form-warning span-2">⚠ {conflictWarning}</div>}
+          {conflictWarning && <div className="form-warning span-2">⚠ {conflictWarning}</div>}
           {error && <div className="auth-error span-2">{error}</div>}
 
           <div className="modal-actions span-2">

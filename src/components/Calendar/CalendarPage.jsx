@@ -111,20 +111,31 @@ export default function CalendarPage() {
     const startHeight = rowHeight || DEFAULT_ROW_HEIGHT
     let moved = false
 
+    function cleanup() {
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('pointerup', onPointerUp)
+      window.removeEventListener('blur', onWindowBlur)
+      // vezi comentariul din dragHelpers.js - fara asta, daca dai drumul la
+      // mouse peste o bara de curs, se deschidea accidental editarea ei
+      if (moved) suppressNextGhostClick()
+    }
     function onPointerMove(moveEvent) {
       moved = true
       const dy = moveEvent.clientY - startY
       setRowHeight(Math.min(72, Math.max(16, startHeight + dy)))
     }
     function onPointerUp() {
-      window.removeEventListener('pointermove', onPointerMove)
-      window.removeEventListener('pointerup', onPointerUp)
-      // vezi comentariul din dragHelpers.js - fara asta, daca dai drumul la
-      // mouse peste o bara de curs, se deschidea accidental editarea ei
-      if (moved) suppressNextGhostClick()
+      cleanup()
+    }
+    // daca mouse-ul e eliberat in afara ferestrei browserului, "pointerup"
+    // nu mai ajunge niciodata la pagina - tratam pierderea focusului
+    // ferestrei ca sfarsitul drag-ului (vezi acelasi fix in WeekGrid.jsx)
+    function onWindowBlur() {
+      cleanup()
     }
     window.addEventListener('pointermove', onPointerMove)
     window.addEventListener('pointerup', onPointerUp)
+    window.addEventListener('blur', onWindowBlur)
   }
 
   useEffect(() => {
@@ -264,6 +275,7 @@ export default function CalendarPage() {
     : toISODate(weeksToShow[weeksToShow.length - 1][6])
 
   const hoverClearTimeout = useRef(null)
+  const hoverShowTimeout = useRef(null)
 
   // masoara latimea totala de scroll a primei saptamani cu continut - toate
   // saptamanile impart aceleasi latimi de coloane, deci una singura e
@@ -278,27 +290,37 @@ export default function CalendarPage() {
     return () => cancelAnimationFrame(raf)
   }, [daysBlockWidth, attrColWidths, attrColumns, weeksToShow, viewMode])
 
+  // popover-ul apare abia dupa 2 secunde de stationare cu mouse-ul pe un
+  // curs, nu instant - userul poate trece rapid peste mai multe cursuri,
+  // fara sa-i sara un chip in fata de fiecare data. Capturam pozitia ACUM
+  // (evenimentul React e refolosit/golit imediat dupa ce iese functia, nu
+  // mai e valid in interiorul lui setTimeout, de-aia citim rect-ul inainte).
   function showHoverDetails(e, course) {
     clearTimeout(hoverClearTimeout.current)
+    clearTimeout(hoverShowTimeout.current)
     const rect = e.currentTarget.getBoundingClientRect()
-    const popoverWidth = 250
-    let left = rect.left
-    if (left + popoverWidth > window.innerWidth - 10) {
-      left = window.innerWidth - popoverWidth - 10
-    }
-    let top = rect.bottom + 6
-    if (top + 180 > window.innerHeight) {
-      top = rect.top - 6 - 180
-    }
-    setHoverInfo({ course, top, left })
-    setHoveredCourseId(course.id)
+    hoverShowTimeout.current = setTimeout(() => {
+      const popoverWidth = 250
+      let left = rect.left
+      if (left + popoverWidth > window.innerWidth - 10) {
+        left = window.innerWidth - popoverWidth - 10
+      }
+      let top = rect.bottom + 6
+      if (top + 180 > window.innerHeight) {
+        top = rect.top - 6 - 180
+      }
+      setHoverInfo({ course, top, left })
+      setHoveredCourseId(course.id)
+    }, 2000)
   }
 
   // mica intarziere (nu instant) la ascundere, anulabila - ca userul sa
   // poata muta mouse-ul de pe bara/eticheta CATRE popover (ex: ca sa dea
   // click pe "Cloneaza curs") fara ca popover-ul sa dispara chiar inainte
-  // sa ajunga acolo
+  // sa ajunga acolo. Anuleaza si aparitia programata, daca mouse-ul pleaca
+  // inainte sa treaca cele 2 secunde - altfel ar aparea oricum, cu intarziere.
   function clearHover() {
+    clearTimeout(hoverShowTimeout.current)
     clearTimeout(hoverClearTimeout.current)
     hoverClearTimeout.current = setTimeout(() => {
       setHoverInfo(null)

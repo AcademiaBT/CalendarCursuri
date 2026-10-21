@@ -23,6 +23,7 @@ export default function ManualPage() {
         <button type="button" onClick={() => jumpTo('setari')}>4. Setări</button>
         <button type="button" onClick={() => jumpTo('administrare')}>5. Administrare</button>
         <button type="button" onClick={() => jumpTo('alerte')}>6. Alerta „Cursuri neclarificate"</button>
+        <button type="button" onClick={() => jumpTo('disponibilitate')}>7. Disponibilitate (traineri și săli libere)</button>
       </nav>
 
       <section id="calendar" className="manual-section">
@@ -174,9 +175,12 @@ export default function ManualPage() {
         <ul>
           <li>
             <strong>Traineri / Săli / Responsabili</strong>: listele care alimentează
-            combobox-urile din formularul de curs. Fiecare rând are „editează" (nume, și capacitate
-            la Săli) și „șterge". Redenumirea afectează doar ce alegi de acum încolo — cursurile
-            deja salvate rămân cu numele vechi.
+            combobox-urile din formularul de curs. Fiecare rând are „editează" (nume, plus
+            companie la Traineri, oraș și capacitate la Săli) și „șterge". La Traineri și
+            Responsabili, redenumirea afectează doar ce alegi de acum încolo — cursurile deja
+            salvate rămân cu numele vechi. La <strong>Săli</strong>, schimbarea numelui sau a
+            orașului se propagă automat și în cursurile existente (o sală apare pe curs ca
+            „Nume (Oraș)", iar două săli cu același nume din orașe diferite rămân distincte).
           </li>
           <li>
             <strong>Import cursuri din Excel</strong>: descarci un model gol, îl completezi, îl
@@ -205,6 +209,37 @@ export default function ManualPage() {
           fără niciun responsabil apar pentru orice user logat. Cursurile anulate nu mai declanșează
           alerta.
         </p>
+      </section>
+
+      <section id="disponibilitate" className="manual-section">
+        <h3>7. Disponibilitate (traineri și săli libere)</h3>
+        <p>
+          Tab-ul <strong>Disponibilitate</strong>, vizibil pentru toți userii, răspunde la
+          întrebarea „cine și ce e liber în perioada asta?", fără să fie nevoie să încerci să
+          programezi un curs ca să afli.
+        </p>
+        <ul>
+          <li>
+            <strong>Perioada</strong>: data și ora de început și de sfârșit. Rezultatul se
+            actualizează singur, la fiecare modificare.
+          </li>
+          <li>
+            <strong>Traineri</strong>: lista celor liberi în acea perioadă; cei ocupați apar
+            restrânși dedesubt, cu cursul care îi ocupă. Poți filtra după companie.
+          </li>
+          <li>
+            <strong>Săli</strong>: la fel, libere / ocupate. Poți filtra după oraș și după
+            capacitate minimă. Dacă alegi un oraș, sălile fără oraș completat apar separat, într-o
+            secțiune restrânsă, ca să nu dispară din rezultate. Sălile fără capacitate completată
+            nu sunt excluse când filtrezi după capacitate — sunt marcate „capacitate necompletată".
+          </li>
+          <li>
+            <strong>Regula de suprapunere</strong> e cea din formularul de curs: două intervale
+            care doar se ating (unul se termină la 13:00, altul începe la 13:00) nu se suprapun;
+            cursurile anulate nu ocupă nimic; sala „Online" nu apare, fiindcă nu are limită de
+            rezervări.
+          </li>
+        </ul>
       </section>
     </div>
   )

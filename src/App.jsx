@@ -7,6 +7,7 @@ import ForcedPasswordChange from './components/Auth/ForcedPasswordChange'
 import CalendarPage from './components/Calendar/CalendarPage'
 import AdminPanel from './components/Admin/AdminPanel'
 import ReportsPage from './components/Reports/ReportsPage'
+import AvailabilityPage from './components/Availability/AvailabilityPage'
 import SettingsPage from './components/Settings/SettingsPage'
 import ManualPage from './components/Manual/ManualPage'
 import TbdAlertModal from './components/Calendar/TbdAlertModal'
@@ -44,6 +45,7 @@ function AppShell() {
         <Routes>
           <Route path="/" element={<CalendarPage />} />
           <Route path="/rapoarte" element={<ReportsPage />} />
+          <Route path="/disponibilitate" element={<AvailabilityPage />} />
           <Route path="/setari" element={<SettingsPage />} />
           <Route path="/manual" element={<ManualPage />} />
           <Route
