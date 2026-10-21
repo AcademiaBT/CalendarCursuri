@@ -14,6 +14,10 @@ const isoToDMY = (iso) => {
 
 const hasText = (v) => Boolean(v && String(v).trim())
 
+// pentru filtrul "denumire contine": fara majuscule si fara diacritice
+// ("mentori" gaseste "Sala Mentori", "oras" gaseste "Oraș")
+const fold = (v) => String(v ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
 function courseLine(c) {
   const dates = c.start_date === c.end_date
     ? isoToDMY(c.start_date)
@@ -71,6 +75,7 @@ export default function AvailabilityPage() {
   const [cityFilter, setCityFilter] = useState('ALL') // 'ALL' | 'NONE' | nume oras
   const [minCapacity, setMinCapacity] = useState('')
   const [companyFilter, setCompanyFilter] = useState('ALL') // 'ALL' | 'NONE' | nume companie
+  const [roomNameFilter, setRoomNameFilter] = useState('') // text cautat in denumirea salii
 
   const [trainers, setTrainers] = useState([])
   const [rooms, setRooms] = useState([])
@@ -150,6 +155,7 @@ export default function AvailabilityPage() {
   }, [trainers, companyFilter, busyCourses])
 
   const capacityNeeded = Number(minCapacity) > 0 ? Number(minCapacity) : 0
+  const nameNeedle = fold(roomNameFilter.trim())
 
   // "Online" si "TBD" nu sunt sali fizice - nu intra niciodata in conflict, deci
   // nu au sens in lista de disponibilitate
@@ -161,6 +167,9 @@ export default function AvailabilityPage() {
       })
       // capacitate necompletata = nu putem exclude sala, o aratam cu mentiune
       .filter((r) => !capacityNeeded || r.capacity == null || r.capacity >= capacityNeeded)
+      // textul cautat trebuie sa apara in NUMELE salii - orasul nu conteaza aici
+      // (pentru oras exista filtrul separat "Oras (sali)")
+      .filter((r) => !nameNeedle || fold(r.name).includes(nameNeedle))
       .map((r) => {
         const display = roomDisplayName(r)
         const metaParts = []
@@ -175,7 +184,7 @@ export default function AvailabilityPage() {
           busy: busyCourses.filter((c) => (c.rooms || []).includes(display)),
         }
       })
-  }, [rooms, capacityNeeded, busyCourses])
+  }, [rooms, capacityNeeded, nameNeedle, busyCourses])
 
   // Oras ales -> salile din acel oras, plus (separat, restrans) cele fara oras
   // completat, ca sa nu dispara nicio sala doar pentru ca nu are oras.
@@ -236,6 +245,15 @@ export default function AvailabilityPage() {
             placeholder="optional"
             value={minCapacity}
             onChange={(e) => setMinCapacity(e.target.value)}
+          />
+        </label>
+        <label className="availability-field">
+          <span>Denumire sala contine</span>
+          <input
+            type="text"
+            placeholder="ex: mentori"
+            value={roomNameFilter}
+            onChange={(e) => setRoomNameFilter(e.target.value)}
           />
         </label>
         <label className="availability-field">

@@ -245,7 +245,7 @@ export default function ManualPage() {
             restrânși dedesubt, cu cursul care îi ocupă. Poți filtra după companie.
           </li>
           <li>
-            <strong>Săli</strong>: la fel, libere / ocupate. Poți filtra după oraș și după
+            <strong>Săli</strong>: la fel, libere / ocupate. Poți filtra după oraș, după un text din numele sălii (fără să conteze majusculele sau diacriticele; orașul nu e inclus în căutare) și după
             capacitate minimă. Dacă alegi un oraș, sălile fără oraș completat apar separat, într-o
             secțiune restrânsă, ca să nu dispară din rezultate. Sălile fără capacitate completată
             nu sunt excluse când filtrezi după capacitate — sunt marcate „capacitate necompletată".
