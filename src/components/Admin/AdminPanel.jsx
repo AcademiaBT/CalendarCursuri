@@ -6,12 +6,18 @@ import useNavbarOffset from '../../hooks/useNavbarOffset'
 import { normalizeForCompare } from '../../utils/fuzzyMatch'
 import { roomDisplayName, parseRoomDisplay } from '../../utils/roomDisplay'
 import { timesOverlap } from '../../utils/timeOverlap'
+import ListGrid from './ListGrid'
 import { matchHeaderToField, parseExcelDate, parseExcelTime, dateToISO, parseTrainersList, parseRoomsList } from '../../utils/courseImport'
 
 // Nume de coloana acceptate in Excel pentru randul de antet (daca exista) -
 // orice alt text de pe prima coloana e tratat ca fiind chiar o valoare de
 // importat, nu un antet.
 const HEADER_ALIASES = ['nume', 'name', 'denumire', 'trainer', 'sala', 'responsabil', 'capacitate', 'capacity']
+
+// compara anteturi de coloana fara sa conteze majusculele, spatiile sau
+// diacriticele ("Oras" = "Oraș" = "ORAS")
+const stripDiacritics = (v) => normalizeForCompare(String(v ?? '')).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+const normVal = (v) => (v === null || v === undefined ? '' : String(v).trim())
 
 function ListManager({ title, table, extraColumns = [], importHint }) {
   const [items, setItems] = useState([])
@@ -21,6 +27,8 @@ function ListManager({ title, table, extraColumns = [], importHint }) {
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState('')
   const fileInputRef = useRef(null)
+  // modul "Editare rapida" (grila, stil Excel) - vezi ListGrid.jsx
+  const [gridMode, setGridMode] = useState(false)
   // id-ul randului aflat in editare (nume/coloane extra) - null = niciunul
   const [editingId, setEditingId] = useState(null)
   const [editDraft, setEditDraft] = useState({ name: '', extra: {} })
@@ -96,8 +104,134 @@ function ListManager({ title, table, extraColumns = [], importHint }) {
     if (e.key === 'Escape') cancelEdit()
   }
 
-  // Import dintr-un fisier Excel: citeste prima coloana din prima foaie ca
-  // nume, si (daca lista are o coloana "capacity") a doua coloana ca numar.
+  // Export: lista curenta, cu o coloana ID pe fiecare rand. O modifici in Excel
+  // (de exemplu completezi orasul la zeci de sali deodata), apoi o reincarci
+  // cu "Importa din Excel" - randurile cu ID se actualizeaza, cele fara ID se
+  // adauga. NU modifica coloana ID, ea leaga randul din fisier de cel din lista.
+  function exportToExcel() {
+    const headers = ['ID', 'Nume', ...extraColumns.map((c) => c.label), 'Activ']
+    const data = items.map((it) => [
+      it.id,
+      it.name,
+      ...extraColumns.map((c) => it[c.key] ?? ''),
+      it.active ? 'da' : 'nu',
+    ])
+    const sheet = XLSX.utils.aoa_to_sheet([headers, ...data])
+    sheet['!cols'] = [{ wch: 38 }, { wch: 32 }, ...extraColumns.map(() => ({ wch: 18 })), { wch: 8 }]
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, sheet, title.slice(0, 31))
+    XLSX.writeFile(workbook, `${table}-${new Date().toISOString().slice(0, 10)}.xlsx`)
+  }
+
+  // Import in mod "actualizare" (fisier exportat, cu coloana ID). Coloanele se
+  // recunosc dupa antet, nu dupa pozitie. Fiecare rand cu ID: se compara cu ce
+  // e acum in lista si se actualizeaza DOAR ce s-a schimbat; fiecare rand fara
+  // ID: se adauga. Randurile cu probleme (nume lipsa, ID necunoscut, duplicat)
+  // sunt sarite si raportate, restul se aplica.
+  async function importWithIds(sheetRows, headerIndex) {
+    const header = sheetRows[headerIndex].map(stripDiacritics)
+    const colOf = (label) => header.indexOf(stripDiacritics(label))
+    const idCol = header.indexOf('id')
+    const nameCol = ['nume', 'name', 'denumire'].map((l) => header.indexOf(l)).find((i) => i >= 0) ?? -1
+    if (nameCol < 0) throw new Error('Nu gasesc coloana "Nume" in fisier.')
+    const extraIdx = extraColumns.map((c) => colOf(c.label))
+    const activeIdx = colOf('Activ')
+    const hasCity = extraColumns.some((c) => c.key === 'city')
+    const keyOf = (rec) => normalizeForCompare(rec.name) + (hasCity ? '|' + normalizeForCompare(rec.city || '') : '')
+
+    const { data: current, error: loadErr } = await supabase.from(table).select('*')
+    if (loadErr) throw loadErr
+    const byId = new Map((current || []).map((it) => [it.id, it]))
+
+    const updates = []
+    const inserts = []
+    const problems = []
+    let unchanged = 0
+
+    for (let i = headerIndex + 1; i < sheetRows.length; i++) {
+      const row = sheetRows[i]
+      const rowNo = i + 1
+      if (row.every((c) => normVal(c) === '')) continue
+
+      const id = idCol >= 0 ? normVal(row[idCol]) : ''
+      const name = normVal(row[nameCol])
+      if (!name) { problems.push(`randul ${rowNo}: numele lipseste`); continue }
+
+      const parsed = {}
+      let rowProblem = ''
+      extraColumns.forEach((c, k) => {
+        if (extraIdx[k] < 0) return // coloana lipseste din fisier - nu o atingem
+        const raw = normVal(row[extraIdx[k]])
+        if (raw === '') { parsed[c.key] = null; return }
+        if (c.type === 'number') {
+          if (!/^\d+$/.test(raw)) { rowProblem = `${c.label} trebuie sa fie un numar intreg`; return }
+          parsed[c.key] = Number(raw)
+        } else {
+          parsed[c.key] = raw
+        }
+      })
+      if (rowProblem) { problems.push(`randul ${rowNo}: ${rowProblem}`); continue }
+
+      let active
+      if (activeIdx >= 0) {
+        const raw = normalizeForCompare(normVal(row[activeIdx]))
+        if (['da', 'true', '1', 'activ', 'x', 'yes'].includes(raw)) active = true
+        else if (['nu', 'false', '0', 'inactiv', 'no'].includes(raw)) active = false
+      }
+
+      if (id) {
+        const existing = byId.get(id)
+        if (!existing) { problems.push(`randul ${rowNo}: ID necunoscut (nu modifica coloana ID)`); continue }
+        const payload = {}
+        if (name !== normVal(existing.name)) payload.name = name
+        for (const c of extraColumns) {
+          if (!(c.key in parsed)) continue
+          if (normVal(parsed[c.key]) !== normVal(existing[c.key])) payload[c.key] = parsed[c.key]
+        }
+        if (active !== undefined && active !== existing.active) payload.active = active
+        if (Object.keys(payload).length === 0) { unchanged++; continue }
+        updates.push({ id, payload, rowNo, existing })
+      } else {
+        inserts.push({ record: { name, ...parsed, ...(active !== undefined ? { active } : {}) }, rowNo })
+      }
+    }
+
+    // duplicate in starea FINALA (dupa aplicarea modificarilor) - sarim doar
+    // randurile atinse de import, nu cele existente pe care nu le-ai schimbat
+    const updatedIds = new Set(updates.map((u) => u.id))
+    const finalEntries = []
+    for (const it of current || []) if (!updatedIds.has(it.id)) finalEntries.push({ key: keyOf(it), ref: null })
+    updates.forEach((u) => finalEntries.push({ key: keyOf({ ...u.existing, ...u.payload }), ref: u }))
+    inserts.forEach((n) => finalEntries.push({ key: keyOf(n.record), ref: n }))
+    const counts = new Map()
+    finalEntries.forEach((e) => counts.set(e.key, (counts.get(e.key) || 0) + 1))
+    const clashing = new Set(finalEntries.filter((e) => e.ref && counts.get(e.key) > 1).map((e) => e.ref))
+    clashing.forEach((ref) => problems.push(`randul ${ref.rowNo}: duplicat (acelasi nume${hasCity ? ' si oras' : ''} exista deja)`))
+
+    let updated = 0
+    let inserted = 0
+    // secvential - la sali, fiecare modificare ruleaza un trigger care actualizeaza cursurile
+    for (const u of updates.filter((x) => !clashing.has(x))) {
+      const { error } = await supabase.from(table).update(u.payload).eq('id', u.id)
+      if (error) problems.push(`randul ${u.rowNo}: ${error.message}`)
+      else updated++
+    }
+    for (const n of inserts.filter((x) => !clashing.has(x))) {
+      const { error } = await supabase.from(table).insert(n.record)
+      if (error) problems.push(`randul ${n.rowNo}: ${error.message}`)
+      else inserted++
+    }
+
+    setImportResult(`Import cu ID: ${updated} actualizate, ${inserted} adaugate, ${unchanged} neschimbate.`)
+    if (problems.length > 0) {
+      setError(`${problems.length} randuri sarite: ${problems.slice(0, 8).join('; ')}${problems.length > 8 ? '; ...' : ''}`)
+    }
+    load()
+  }
+
+  // Import dintr-un fisier Excel: prima coloana din prima foaie = nume, iar
+  // urmatoarele = coloanele extra ale listei, in ordinea din tabel (oras,
+  // capacitate la Sali; companie la Traineri).
   // Randul de antet (ex: "Nume"/"Sala"/"Capacitate") e detectat si ignorat
   // automat. Numele duplicate (dupa cele deja existente) sunt sarite, nu
   // dau eroare.
@@ -114,8 +248,22 @@ function ListManager({ title, table, extraColumns = [], importHint }) {
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
       const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' })
 
-      const hasCapacity = extraColumns.some((c) => c.key === 'capacity')
-      const seen = new Map() // name -> row de inserat
+      // fisier exportat din aceasta lista (are coloana "ID") -> mod ACTUALIZARE:
+      // randurile cu ID se actualizeaza, cele fara ID se adauga ca noi
+      const headerIndex = rows.findIndex((r) => r.some((c) => normVal(c) !== ''))
+      if (headerIndex >= 0 && rows[headerIndex].map(stripDiacritics).includes('id')) {
+        await importWithIds(rows, headerIndex)
+        return
+      }
+
+      // coloanele fisierului: prima = nume, urmatoarele = coloanele extra ale
+      // listei, in ordinea in care apar in tabel (ex: la Sali -> oras, capacitate;
+      // la Traineri -> companie)
+      const hasCity = extraColumns.some((c) => c.key === 'city')
+      // identitatea unui rand: la sali, nume + oras (pot exista doua sali cu
+      // acelasi nume, in orase diferite); la restul, doar numele
+      const keyOf = (rec) => normalizeForCompare(rec.name) + (hasCity ? '|' + normalizeForCompare(rec.city || '') : '')
+      const seen = new Map() // cheie -> row de inserat
 
       for (const row of rows) {
         const rawName = row[0]
@@ -125,11 +273,17 @@ function ListManager({ title, table, extraColumns = [], importHint }) {
         if (HEADER_ALIASES.includes(name.toLowerCase())) continue // sare randul de antet
 
         const record = { name }
-        if (hasCapacity && row[1] !== undefined && row[1] !== '') {
-          const capacity = Number(row[1])
-          if (!Number.isNaN(capacity)) record.capacity = capacity
-        }
-        seen.set(name, record)
+        extraColumns.forEach((col, i) => {
+          const raw = row[i + 1]
+          if (raw === undefined || raw === null || String(raw).trim() === '') return
+          if (col.type === 'number') {
+            const n = Number(raw)
+            if (!Number.isNaN(n)) record[col.key] = n
+          } else {
+            record[col.key] = String(raw).trim()
+          }
+        })
+        seen.set(keyOf(record), record)
       }
 
       const toInsert = [...seen.values()]
@@ -137,13 +291,20 @@ function ListManager({ title, table, extraColumns = [], importHint }) {
       if (toInsert.length === 0) {
         setError('Nu am gasit niciun nume valid in fisier (prima coloana, prima foaie).')
       } else {
-        const { data, error } = await supabase
-          .from(table)
-          .upsert(toInsert, { onConflict: 'name', ignoreDuplicates: true })
-          .select()
-        if (error) throw error
-        setImportResult(`Import reusit: ${data?.length ?? 0} adaugate din ${toInsert.length} gasite in fisier (restul existau deja).`)
-        load()
+        // sarim peste ce exista deja (nu dam eroare) - verificam noi, nu prin
+        // upsert pe "name": la sali unicitatea e pe nume + oras, nu doar nume
+        const { data: current, error: loadErr } = await supabase.from(table).select('*')
+        if (loadErr) throw loadErr
+        const existingKeys = new Set((current || []).map(keyOf))
+        const fresh = toInsert.filter((rec) => !existingKeys.has(keyOf(rec)))
+        if (fresh.length === 0) {
+          setImportResult(`Nimic de adaugat: toate cele ${toInsert.length} din fisier existau deja.`)
+        } else {
+          const { data, error } = await supabase.from(table).insert(fresh).select()
+          if (error) throw error
+          setImportResult(`Import reusit: ${data?.length ?? 0} adaugate din ${toInsert.length} gasite in fisier (restul existau deja).`)
+          load()
+        }
       }
     } catch (err) {
       setError('Eroare la citirea fisierului: ' + (err.message || 'format neasteptat. Foloseste un fisier .xlsx sau .csv.'))
@@ -157,13 +318,23 @@ function ListManager({ title, table, extraColumns = [], importHint }) {
     <div className="admin-section">
       <h3>{title}</h3>
       <p className="admin-hint">
-        Redenumirea afecteaza doar ce alegi de acum incolo in formularul de curs - cursurile
-        deja salvate raman cu numele vechi, neschimbate (istoricul e text, nu legatura catre
-        acest rand).
+        {table === 'rooms'
+          ? 'Schimbarea numelui sau a orasului unei sali se propaga automat si in cursurile existente (pe curs, sala apare ca "Nume (Oras)").'
+          : 'Redenumirea afecteaza doar ce alegi de acum incolo in formularul de curs - cursurile deja salvate raman cu numele vechi, neschimbate (istoricul e text, nu legatura catre acest rand).'}
       </p>
       {error && <div className="auth-error">{error}</div>}
       {importResult && <div className="auth-info">{importResult}</div>}
 
+      {gridMode ? (
+        <ListGrid
+          table={table}
+          extraColumns={extraColumns}
+          items={items}
+          onSaved={load}
+          onClose={() => { setGridMode(false); load() }}
+        />
+      ) : (
+      <>
       <form className="admin-add-form" onSubmit={addItem}>
         <input placeholder="Nume" value={name} onChange={(e) => setName(e.target.value)} required />
         {extraColumns.map((col) => (
@@ -190,8 +361,16 @@ function ListManager({ title, table, extraColumns = [], importHint }) {
             style={{ display: 'none' }}
           />
         </label>
+        <button type="button" className="secondary-btn" onClick={exportToExcel} disabled={items.length === 0}>
+          Exporta in Excel
+        </button>
+        <button type="button" onClick={() => { setError(''); setImportResult(''); setGridMode(true) }}>
+          Editare rapida (grila)
+        </button>
         <span className="admin-hint admin-import-hint">
           {importHint || 'Fisier cu o coloana de nume (prima foaie, prima coloana). Randul de antet, daca exista, e ignorat automat.'}
+          {' '}Pentru modificari in masa: exporta lista, modific-o in Excel (nu schimba coloana ID) si reincarc-o aici -
+          randurile cu ID se actualizeaza, cele fara ID se adauga.
         </span>
       </div>
 
@@ -254,6 +433,8 @@ function ListManager({ title, table, extraColumns = [], importHint }) {
           ))}
         </tbody>
       </table>
+      </>
+      )}
     </div>
   )
 }

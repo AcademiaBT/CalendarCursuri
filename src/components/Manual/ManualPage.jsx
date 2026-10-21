@@ -183,6 +183,23 @@ export default function ManualPage() {
             „Nume (Oraș)", iar două săli cu același nume din orașe diferite rămân distincte).
           </li>
           <li>
+            <strong>Editare rapidă (grilă)</strong>: butonul „Editare rapidă (grilă)" de lângă
+            fiecare listă o transformă într-un tabel editabil, ca în Excel. <strong>Tab</strong> /
+            <strong>Shift+Tab</strong> mută între celule, <strong>Enter</strong> /
+            <strong>Shift+Enter</strong> în jos / în sus, săgețile se deplasează, <strong>Space</strong>
+            bifează „Activ", <strong>Esc</strong> anulează modificarea din celulă,
+            <strong>Ctrl+Enter</strong> adaugă un rând nou, iar <strong>Ctrl+S</strong> salvează.
+            Modificările nu se salvează pe loc, ci în lot, la „Salvează toate": celulele schimbate
+            sunt colorate galben, cele cu probleme (nume lipsă, duplicat) roșu și blochează
+            salvarea până le corectezi.
+          </li>
+          <li>
+            <strong>Export / import în Excel</strong>: „Exportă în Excel" scoate lista cu o coloană
+            ID. O modifici în Excel (de exemplu completezi orașul la mai multe săli deodată; nu
+            schimba coloana ID) și o reîncarci cu „Importă din Excel" — rândurile cu ID se
+            actualizează, cele fără ID se adaugă. Rândurile cu probleme sunt sărite și raportate.
+          </li>
+          <li>
             <strong>Import cursuri din Excel</strong>: descarci un model gol, îl completezi, îl
             încarci înapoi. Coloanele sunt recunoscute după antet, nu după poziție; trainer/sală/
             responsabil necunoscute se creează automat; un curs poate avea mai mulți traineri

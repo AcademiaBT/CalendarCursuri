@@ -1121,3 +1121,26 @@ input:focus, select:focus, textarea:focus {
 .availability-busy { margin-bottom: 4px; }
 .availability-busy-courses { margin: 4px 0 0; padding-left: 16px; font-size: 12px; color: inherit; }
 .availability-busy-courses li { margin-bottom: 2px; }
+
+/* Editare rapida (grila, stil Excel) - Administrare, vezi ListGrid.jsx */
+.list-grid-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 8px; }
+.list-grid-search { min-width: 200px; }
+.list-grid-status { font-size: 12px; color: var(--text-muted); margin-right: auto; }
+.list-grid-wrap { max-height: 70vh; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+.list-grid { width: 100%; border-collapse: collapse; font-size: 13px; }
+.list-grid thead th {
+  position: sticky; top: 0; z-index: 1; background: var(--card);
+  text-align: left; padding: 6px 8px; color: var(--text-muted); font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+.list-grid td { padding: 0; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); }
+.list-grid td:last-child { border-right: none; padding: 0 6px; }
+.list-grid td input[type="text"] {
+  width: 100%; box-sizing: border-box; border: none; border-radius: 0;
+  padding: 7px 8px; background: transparent; font-size: 13px;
+}
+.list-grid td input[type="text"]:focus { outline: 2px solid var(--accent); outline-offset: -2px; background: white; }
+.list-grid-check { text-align: center; width: 60px; }
+.list-grid tr.row-new td { background: #e7f0ff; }
+.list-grid td.cell-dirty { background: #fff4cc; }
+.list-grid td.cell-error { background: #fbe0e3; }
