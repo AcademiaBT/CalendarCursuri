@@ -45,7 +45,7 @@ function ResourceGroup({ entries, freeLabel, busyLabel }) {
       {busy.length > 0 && (
         <details className="availability-busy">
           <summary>{busyLabel} ({busy.length})</summary>
-          <ul className="availability-list">
+          <ul className="availability-list availability-list-busy">
             {busy.map((e) => (
               <li key={e.key}>
                 <strong>{e.label}</strong>

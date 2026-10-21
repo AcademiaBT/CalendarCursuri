@@ -1108,10 +1108,16 @@ input:focus, select:focus, textarea:focus {
 .availability-group { margin-bottom: 8px; }
 .availability-heading { font-weight: 700; font-size: 13px; margin-bottom: 6px; }
 .availability-heading-free { color: #0f5132; }
-.availability-list { margin: 0; padding-left: 18px; }
-.availability-list li { margin-bottom: 4px; line-height: 1.4; }
-.availability-list-free li { color: #0f5132; }
-.availability-meta { color: var(--text-muted); font-weight: 400; font-size: 12px; }
+.availability-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.availability-list > li { padding: 7px 12px; border-radius: 8px; line-height: 1.4; }
+/* liberi: text verde inchis pe fundal verde deschis (aceleasi culori ca "invitatie trimisa" din calendar) */
+.availability-list-free > li { background: #d9f2e3; color: #0f5132; }
+/* ocupati: text visiniu pe fundal rosu deschis */
+.availability-list-busy > li { background: #fbe0e3; color: #7a1f3d; }
+.availability-meta { font-weight: 400; font-size: 12px; opacity: 0.8; }
 .availability-busy, .availability-nocity { margin-top: 10px; }
 .availability-busy summary, .availability-nocity summary { cursor: pointer; font-weight: 600; font-size: 13px; color: var(--text-muted); }
-.availability-busy-courses { margin: 2px 0 6px; padding-left: 16px; font-size: 12px; color: var(--text-muted); }
+.availability-busy summary { color: #7a1f3d; margin-bottom: 6px; }
+.availability-busy { margin-bottom: 4px; }
+.availability-busy-courses { margin: 4px 0 0; padding-left: 16px; font-size: 12px; color: inherit; }
+.availability-busy-courses li { margin-bottom: 2px; }
