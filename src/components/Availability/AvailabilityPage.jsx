@@ -238,6 +238,15 @@ export default function AvailabilityPage() {
           </select>
         </label>
         <label className="availability-field">
+          <span>Denumire sala contine</span>
+          <input
+            type="text"
+            placeholder="ex: mentori"
+            value={roomNameFilter}
+            onChange={(e) => setRoomNameFilter(e.target.value)}
+          />
+        </label>
+        <label className="availability-field">
           <span>Capacitate minima (sali)</span>
           <input
             type="number"
@@ -245,15 +254,6 @@ export default function AvailabilityPage() {
             placeholder="optional"
             value={minCapacity}
             onChange={(e) => setMinCapacity(e.target.value)}
-          />
-        </label>
-        <label className="availability-field">
-          <span>Denumire sala contine</span>
-          <input
-            type="text"
-            placeholder="ex: mentori"
-            value={roomNameFilter}
-            onChange={(e) => setRoomNameFilter(e.target.value)}
           />
         </label>
         <label className="availability-field">
