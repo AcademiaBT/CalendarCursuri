@@ -62,6 +62,15 @@ const emptyForm = (startDate, defaultResponsible) => ({
 // gaseste elementul din lista (traineri/sali/responsabili) a carui nume se
 // potriveste cu valoarea data, dupa normalizare (spatii/punctuatie/majuscule)
 // - folosit atat pentru afisarea unui indiciu langa camp, cat si la salvare
+// erorile brute de la baza de date sunt in engleza si tehnice - pentru cele
+// previzibile afisam un mesaj in romana
+function friendlyDbError(err, fallback) {
+  if (err?.code === '23505') {
+    return 'Exista deja o valoare cu acest nume in lista. Inchide si redeschide formularul, apoi incearca din nou.'
+  }
+  return err?.message || fallback
+}
+
 function findMatch(list, rawValue) {
   const value = normalizeForCompare(rawValue)
   if (!value) return null
@@ -427,6 +436,17 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
   // existenta, daca s-a potrivit dupa litere mari/mici, evitand duplicate).
   // "transform" (optional) formateaza valoarea NOUA inainte de a o crea -
   // nu se aplica peste o valoare deja existenta, gasita in lista.
+  // dupa ce o valoare noua a fost creata in baza de date, o adaugam si in
+  // lista locala - altfel, daca salvarea cursului esueaza apoi din alt motiv
+  // (ex: conflict de sala/trainer) si userul corecteaza si apasa din nou
+  // "Salveaza", formularul nu stie ca valoarea exista deja si incearca s-o
+  // creeze a doua oara (eroare "duplicate key", sau - la sali fara oras -
+  // un duplicat tacut)
+  function rememberCreated(table, row) {
+    const setter = { trainers: setTrainers, rooms: setRooms, responsible_persons: setResponsiblePersons }[table]
+    setter?.((prev) => (prev.some((item) => item.id === row.id) ? prev : [...prev, row]))
+  }
+
   async function ensureListValue(table, list, rawValue, { transform } = {}) {
     const value = (rawValue || '').trim()
     if (!value || value === 'TBD') return value
@@ -434,7 +454,19 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
     if (existing) return existing.name
     const nameToInsert = transform ? transform(value) : value
     const { data, error } = await supabase.from(table).insert({ name: nameToInsert, active: true }).select().single()
-    if (error) throw error
+    if (error) {
+      // exista deja (creata intre timp - de alt user, sau la o salvare
+      // anterioara): o folosim pe cea existenta, nu mai dam eroare
+      if (error.code === '23505') {
+        const { data: found } = await supabase.from(table).select('*').eq('name', nameToInsert).maybeSingle()
+        if (found) {
+          rememberCreated(table, found)
+          return found.name
+        }
+      }
+      throw error
+    }
+    rememberCreated(table, data)
     return data.name
   }
 
@@ -464,6 +496,7 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
     const { name, city } = parseRoomDisplay(value)
     const { data, error } = await supabase.from('rooms').insert({ name: toProperCase(name), city, active: true }).select().single()
     if (error) throw error
+    rememberCreated('rooms', data)
     return roomDisplayName(data)
   }
 
@@ -529,7 +562,7 @@ export default function CourseModal({ initialDate, course, onClose, onSaved, ini
       roomNames = await ensureRoomsList(effectiveRooms)
       responsibleName = await ensureListValue('responsible_persons', responsiblePersons, form.responsible)
     } catch (err) {
-      setError(err.message || 'Nu am putut adauga automat valoarea noua in lista.')
+      setError(friendlyDbError(err, 'Nu am putut adauga automat valoarea noua in lista.'))
       setBusy(false)
       return
     }

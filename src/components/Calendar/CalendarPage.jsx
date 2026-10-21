@@ -290,14 +290,20 @@ export default function CalendarPage() {
     return () => cancelAnimationFrame(raf)
   }, [daysBlockWidth, attrColWidths, attrColumns, weeksToShow, viewMode])
 
-  // popover-ul apare abia dupa 2 secunde de stationare cu mouse-ul pe un
-  // curs, nu instant - userul poate trece rapid peste mai multe cursuri,
-  // fara sa-i sara un chip in fata de fiecare data. Capturam pozitia ACUM
-  // (evenimentul React e refolosit/golit imediat dupa ce iese functia, nu
-  // mai e valid in interiorul lui setTimeout, de-aia citim rect-ul inainte).
+  // Doua lucruri separate la hover pe un curs:
+  //  - evidentierea pe durata cursului (toate zilele lui, in Lunar si
+  //    Saptamanal) apare INSTANT - ca sa vezi imediat pe cate zile se intinde
+  //  - chipul cu detalii apare abia dupa 2 secunde de stationare, nu instant -
+  //    poti trece rapid peste mai multe cursuri fara sa-ti sara un chip in fata
+  // Capturam pozitia ACUM (evenimentul React e golit imediat dupa ce iese
+  // functia, nu mai e valid in interiorul lui setTimeout).
   function showHoverDetails(e, course) {
     clearTimeout(hoverClearTimeout.current)
     clearTimeout(hoverShowTimeout.current)
+    setHoveredCourseId(course.id)
+    // chipul de detalii al ALTUI curs nu trebuie sa ramana pe ecran cat timp
+    // esti cu mouse-ul pe un curs nou (ar parea ca apartine lui)
+    setHoverInfo((current) => (current && current.course.id === course.id ? current : null))
     const rect = e.currentTarget.getBoundingClientRect()
     hoverShowTimeout.current = setTimeout(() => {
       const popoverWidth = 250
@@ -310,7 +316,6 @@ export default function CalendarPage() {
         top = rect.top - 6 - 180
       }
       setHoverInfo({ course, top, left })
-      setHoveredCourseId(course.id)
     }, 2000)
   }
 
